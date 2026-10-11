@@ -28,4 +28,4 @@ As 60 questões incluídas são inéditas para treino e não são questões ofic
 
 ## Limites desta versão
 
-O histórico fica no armazenamento local do navegador e pode ser apagado ao limpar os dados do site. Ainda não há conta, sincronização, exportação/importação de backup, cadastro de provas antigas nem cronograma adaptativo por desempenho. Use os links oficiais em **Fontes e limites** para consultar edital, legislação e retificações.
+O histórico fica no armazenamento local do navegador e pode ser apagado ao limpar os dados do site. Ainda não há conta, sincronização, exportação/importação de backup nem cronograma adaptativo por desempenho. Provas antigas estão linkadas em Fontes e limites para resolver no provedor; não são copiadas para o banco local. Use os links oficiais em **Fontes e limites** para consultar edital, legislação e retificações.
