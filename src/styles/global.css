@@ -91,3 +91,51 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .mobile-nav-item.active { color: #24775e; }
   .page-placeholder { padding: 25px 20px; }
 }
+
+/* Study workspace */
+.muted,.page-heading p,.panel p { color: var(--muted); line-height: 1.65; }
+.metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:22px 0; }
+.metric,.panel,.question-card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; }
+.metric span { display:block; color:var(--muted); font-size:12px; }
+.metric strong { display:block; margin-top:8px; font:700 27px var(--serif); color:var(--pine-light); }
+.panel-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.panel h2,.question-card h2 { margin:0 0 14px; font:600 20px var(--serif); color:var(--ink); }
+.panel li { color:#536661; margin:8px 0; font-size:13px; }
+.button-secondary { color:var(--pine); background:#e5f2eb; }
+.page-heading { margin-bottom:22px; }
+.page-heading h1 { margin:8px 0; font:600 clamp(25px,3vw,34px) var(--serif); color:var(--ink); }
+.filters { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
+.filters label,.panel label { display:grid; gap:6px; color:#60736d; font-size:12px; font-weight:600; }
+select,input { min-height:40px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+.question-meta { display:flex; justify-content:space-between; gap:10px; margin-bottom:18px; color:var(--muted); font-size:11px; }
+.option-list { display:grid; gap:9px; margin:18px 0; }
+.option { display:flex; align-items:flex-start; gap:12px; padding:13px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); text-align:left; cursor:pointer; }
+.option b { display:grid; place-items:center; min-width:25px; height:25px; border-radius:7px; background:#edf3ef; }
+.option.selected { border-color:#4ca984; background:#f0faf5; }
+.option.correct { border-color:#2c9b68; background:#ebf8f0; }
+.option.incorrect { border-color:#d76f63; background:#fff2f0; }
+.feedback { margin:18px 0 0; padding:16px; border-radius:10px; }
+.feedback p { line-height:1.65; }
+.is-correct { background:#edf8f1; color:#1b6442; }
+.is-wrong { background:#fff5ee; color:#81512b; }
+.question-count { margin-top:18px; color:var(--muted); font-size:11px; }
+.syllabus { margin:12px 0; }
+.syllabus details { padding:12px 0; border-top:1px solid var(--line); color:var(--ink); }
+.syllabus summary { cursor:pointer; font-weight:600; }
+.text-button { padding:0; border:0; background:none; color:#24775e; font-weight:700; cursor:pointer; }
+.source { margin:10px 0; }
+.source a { color:#24775e; font-size:13px; font-weight:700; }
+.plan-list { margin:20px 0; }
+.plan-row { display:grid; grid-template-columns:1fr 2fr auto; gap:14px; padding:13px 0; border-bottom:1px solid var(--line); color:#50635e; font-size:13px; }
+.progress-row { margin:18px 0; }
+.progress-row div { display:flex; justify-content:space-between; gap:12px; color:#526560; font-size:12px; }
+progress { width:100%; height:9px; accent-color:#48a77d; }
+@media(max-width:780px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel-grid{grid-template-columns:1fr}}
+@media(max-width:660px){.question-meta{flex-direction:column}.plan-row{grid-template-columns:1fr auto}.plan-row span{grid-column:1/-1}.metric{padding:15px}.metric strong{font-size:22px}}
+.exam-clock { display:inline-flex; padding:7px 12px; border-radius:8px; background:#eaf4ee; color:#245f49; font-weight:700; font-size:14px; }
+.sim-nav { display:flex; flex-wrap:wrap; gap:6px; margin:22px 0; }
+.sim-number { width:34px; height:34px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:#fff; cursor:pointer; }
+.sim-number.answered { background:#e3f2e9; border-color:#7dbd98; }
+.sim-number.current { outline:2px solid #23845e; }
+.sim-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; }
+.warning { color:#995f23!important; background:#fff4df; border-radius:8px; padding:12px; }

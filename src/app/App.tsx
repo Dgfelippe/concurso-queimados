@@ -1,72 +1,56 @@
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { navigationItems } from './navigation';
+import { questions } from '../data/questions';
+import { syllabusTopics } from '../data/topics';
+import { contest, disciplineRules } from '../data/edital';
+import { sourceLinks } from '../data/sources';
+import type { Attempt, Discipline, ErrorReason, OptionId } from '../domain/types';
 import '../styles/global.css';
 
-function LandingPage() {
-  return (
-    <section className="welcome-card" aria-labelledby="welcome-title">
-      <div className="welcome-copy">
-        <span className="eyebrow">SUA PREPARAÇÃO, UM DIA DE CADA VEZ</span>
-        <h1 id="welcome-title">Constância constrói confiança.</h1>
-        <p>Organize seu estudo, pratique com intenção e use cada erro como próximo passo.</p>
-        <NavLink className="button button-primary" to="/questoes">Começar a estudar <span aria-hidden="true">→</span></NavLink>
-      </div>
-      <div className="welcome-mark" aria-hidden="true"><span>RQ</span><i /></div>
-    </section>
-  );
+const labels: Record<Discipline,string> = { portuguese:'Língua Portuguesa', municipal_law:'Legislação Municipal', specific_knowledge:'Conhecimentos Específicos' };
+const errorLabels: Record<ErrorReason,string> = { unknown_content:'Não sabia o conteúdo', concept_confusion:'Confundi conceitos', misread:'Interpretei o enunciado errado', inattention:'Falta de atenção', between_options:'Fiquei entre alternativas', calculation:'Errei o cálculo' };
+const storedAttempts = (): Attempt[] => { try { return JSON.parse(localStorage.getItem('rq-attempts') || '[]') as Attempt[]; } catch { return []; } };
+const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR');
+
+function LandingPage({ attempts }: { attempts: Attempt[] }) {
+  const correct = attempts.filter(a=>a.correct).length;
+  const accuracy = attempts.length ? Math.round(correct/attempts.length*100) : 0;
+  const days = Math.max(0, Math.ceil((new Date(`${contest.examDate}T12:00:00`).getTime()-Date.now())/86400000));
+  return <><section className="welcome-card"><div className="welcome-copy"><span className="eyebrow">SUA PREPARAÇÃO, UM DIA DE CADA VEZ</span><h1>Constância constrói confiança.</h1><p>Estude pelo edital, pratique com intenção e transforme cada erro em uma revisão.</p><NavLink className="button button-primary" to="/questoes">Começar a praticar <span>→</span></NavLink></div><div className="welcome-mark"><span>{days}</span><small>DIAS PARA A PROVA*</small></div></section><p className="muted">*Data prevista conforme edital cadastrado: {prettyDate(contest.examDate)}. Confira atualizações oficiais.</p><div className="metric-grid"><Metric label="Questões respondidas" value={attempts.length}/><Metric label="Aproveitamento geral" value={`${accuracy}%`}/><Metric label="Acertos" value={correct}/><Metric label="Matérias no edital" value={syllabusTopics.length}/></div><div className="panel-grid"><section className="panel"><h2>Seu próximo passo</h2><p>Faça um bloco curto de questões e leia os comentários, inclusive quando acertar no chute.</p><NavLink className="button button-secondary" to="/questoes">Abrir questões</NavLink></section><section className="panel"><h2>Como estudar melhor</h2><ol><li>Faça questões sem consultar o material.</li><li>Registre por que errou e revise o tema.</li><li>Refaça questões erradas depois de alguns dias.</li><li>Use o simulado para treinar tempo e estratégia.</li></ol></section></div></>;
+}
+function Metric({label,value}:{label:string,value:string|number}) { return <section className="metric"><span>{label}</span><strong>{value}</strong></section>; }
+function PageTitle({kicker,title,children}:{kicker:string,title:string,children?:ReactNode}) { return <div className="page-heading"><span className="eyebrow">{kicker}</span><h1>{title}</h1>{children&&<p>{children}</p>}</div>; }
+
+function Practice({ onAnswer, allowedIds, simulation=false }: { onAnswer:(qId:string,choice:OptionId,correct:boolean,reason?:ErrorReason,confidence?:Attempt['confidence'])=>void, allowedIds?:string[], simulation?:boolean }) {
+  const [discipline,setDiscipline]=useState<Discipline|'all'>('all'); const [topic,setTopic]=useState('all'); const [index,setIndex]=useState(0); const [choice,setChoice]=useState<OptionId|''>(''); const [show,setShow]=useState(false); const [reason,setReason]=useState<ErrorReason>('unknown_content'); const [confidence,setConfidence]=useState<Attempt['confidence']>('sure');
+  const pool=useMemo(()=>questions.filter(q=>(!allowedIds||allowedIds.includes(q.id))&&(discipline==='all'||q.discipline===discipline)&&(topic==='all'||q.topicId===topic)),[discipline,topic,allowedIds]);
+  const q=pool.length?pool[index%pool.length]:undefined;
+  useEffect(()=>{setIndex(0);setChoice('');setShow(false)},[discipline,topic]);
+  const submit=()=>{if(!q||!choice)return; const correct=choice===q.correctOption; onAnswer(q.id,choice,correct,correct?undefined:reason,confidence);setShow(true)};
+  return <><PageTitle kicker={simulation?'TREINO COM TEMPO':'PRÁTICA DIRECIONADA'} title={simulation?'Simulado por matéria':'Banco de questões'}>Questões de treino inéditas e comentadas. A banca pode cobrar os assuntos de outro modo; confira sempre o edital e as fontes.</PageTitle><div className="filters"><label>Matéria<select value={discipline} onChange={e=>setDiscipline(e.target.value as Discipline|'all')}><option value="all">Todas</option>{Object.entries(labels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>Assunto<select value={topic} onChange={e=>setTopic(e.target.value)}><option value="all">Todos</option>{syllabusTopics.filter(t=>discipline==='all'||t.discipline===discipline).map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select></label></div>{q?<article className="question-card"><div className="question-meta"><span>{labels[q.discipline]} · {syllabusTopics.find(t=>t.id===q.topicId)?.title}</span><span>{q.provenance.label}</span></div><h2>{q.prompt}</h2><div className="option-list">{q.options.map(o=><button key={o.id} disabled={show} onClick={()=>setChoice(o.id)} className={`option${choice===o.id?' selected':''}${show&&o.id===q.correctOption?' correct':''}${show&&choice===o.id&&choice!==q.correctOption?' incorrect':''}`}><b>{o.id}</b><span>{o.text}</span></button>)}</div>{!show&&<><div className="filters"><label>Confiança<select value={confidence} onChange={e=>setConfidence(e.target.value as Attempt['confidence'])}><option value="sure">Tenho segurança</option><option value="doubt">Estou em dúvida</option><option value="guess">Chutei</option></select></label>{choice&&choice!==q.correctOption&&<label>Por que errou?<select value={reason} onChange={e=>setReason(e.target.value as ErrorReason)}>{Object.entries(errorLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>}</div><button className="button button-primary" disabled={!choice} onClick={submit}>Responder</button></>}{show&&<div className={`feedback ${choice===q.correctOption?'is-correct':'is-wrong'}`}><strong>{choice===q.correctOption?'Resposta correta':'Revise este ponto'}</strong><p>{q.explanation}</p><button className="button button-primary" onClick={()=>{setIndex(i=>i+1);setChoice('');setShow(false)}}>Próxima questão →</button></div>}<div className="question-count">Questão {index+1} · {pool.length} disponíveis neste filtro</div></article>:<p>Nenhuma questão encontrada para esse filtro.</p>}</>;
 }
 
-function AreaPage({ title }: { title: string }) {
-  return (
-    <section className="page-placeholder" aria-labelledby="page-title">
-      <span className="eyebrow">SUA JORNADA DE ESTUDO</span>
-      <h1 id="page-title">{title}</h1>
-      <p>Este espaço faz parte do seu preparatório. Os recursos serão organizados aqui.</p>
-    </section>
-  );
+function ExamSimulator({onAnswer}:{onAnswer:(qId:string,choice:OptionId,correct:boolean,reason?:ErrorReason,confidence?:Attempt['confidence'])=>void}) {
+  const [items,setItems]=useState<typeof questions>([]); const [answers,setAnswers]=useState<Record<string,OptionId>>({}); const [index,setIndex]=useState(0); const [seconds,setSeconds]=useState(contest.durationMinutes*60); const [result,setResult]=useState<null|{points:number,correct:number,zero:string[],by:Record<Discipline,{hits:number,total:number,points:number}>,elapsed:number}>(null);
+  useEffect(()=>{if(!items.length||result)return;const timer=window.setInterval(()=>setSeconds(s=>{if(s<=1){window.clearInterval(timer);return 0}return s-1}),1000);return()=>window.clearInterval(timer)},[items.length,result]);
+  useEffect(()=>{if(items.length&&seconds===0&&!result)finish()},[seconds]);
+  const begin=()=>{const shuffled=(d:Discipline)=>questions.filter(q=>q.discipline===d).sort(()=>Math.random()-.5).slice(0,disciplineRules[d].questionCount);setItems([...shuffled('portuguese'),...shuffled('municipal_law'),...shuffled('specific_knowledge')]);setAnswers({});setIndex(0);setSeconds(contest.durationMinutes*60);setResult(null)};
+  const finish=()=>{if(!items.length||result)return;const by:Record<Discipline,{hits:number,total:number,points:number}>={portuguese:{hits:0,total:0,points:0},municipal_law:{hits:0,total:0,points:0},specific_knowledge:{hits:0,total:0,points:0}};let hits=0;for(const q of items){const correct=answers[q.id]===q.correctOption;by[q.discipline].total++;if(correct){hits++;by[q.discipline].hits++;by[q.discipline].points+=disciplineRules[q.discipline].pointsPerQuestion}if(answers[q.id])onAnswer(q.id,answers[q.id],correct,correct?undefined:'unknown_content','sure')}setResult({points:Object.values(by).reduce((s,x)=>s+x.points,0),correct:hits,zero:(Object.keys(by) as Discipline[]).filter(d=>by[d].hits===0).map(d=>labels[d]),by,elapsed:contest.durationMinutes*60-seconds})};
+  const q=items[index];const mm=String(Math.floor(seconds/60)).padStart(3,'0');const ss=String(seconds%60).padStart(2,'0');
+  if(result)return <><PageTitle kicker="RESULTADO DO SIMULADO" title={`${result.points} de 100 pontos`}>Você acertou {result.correct} de {items.length} questões em {Math.floor(result.elapsed/60)} min. Esse resultado é um diagnóstico de estudo, não uma previsão de aprovação.</PageTitle><section className="panel"><h2>Pontuação por matéria</h2>{Object.entries(result.by).map(([d,x])=><div className="plan-row" key={d}><b>{labels[d as Discipline]}</b><span>{x.hits}/{x.total} acertos</span><strong>{x.points}/{disciplineRules[d as Discipline].maxPoints} pts</strong></div>)}<p>{result.points<contest.minimumScore?`Abaixo da nota mínima de ${contest.minimumScore} pontos no edital. Priorize as matérias com menor aproveitamento.`:`Acima da nota mínima informada no edital; continue fortalecendo cada disciplina.`}</p>{result.zero.length>0&&<p className="warning">Atenção: houve zero em {result.zero.join(', ')}. O edital prevê eliminação por nota zero em disciplina.</p>}<button className="button button-primary" onClick={begin}>Fazer outro simulado</button></section></>;
+  if(!items.length)return <><PageTitle kicker="FORMATO DO EDITAL" title="Simulado completo">Treino com 30 questões, duração de até 3 horas e distribuição/pontuação cadastradas para o edital.</PageTitle><section className="panel"><p>10 questões de Português (2 pontos cada), 5 de Legislação Municipal (1 ponto cada) e 15 de Conhecimentos Específicos (5 pontos cada).</p><p>O banco possui questões inéditas de treino; elas não são provas anteriores nem questões oficiais da IAN.</p><button className="button button-primary" onClick={begin}>Iniciar simulado · 3 horas</button></section></>;
+  return <><PageTitle kicker="SIMULADO EM ANDAMENTO" title={`Questão ${index+1} de ${items.length}`}><span className="exam-clock">Tempo restante: {mm}:{ss}</span></PageTitle><article className="question-card"><div className="question-meta"><span>{labels[q.discipline]} · {syllabusTopics.find(t=>t.id===q.topicId)?.title}</span><span>{q.provenance.label}</span></div><h2>{q.prompt}</h2><div className="option-list">{q.options.map(o=><button key={o.id} className={`option${answers[q.id]===o.id?' selected':''}`} onClick={()=>setAnswers(a=>({...a,[q.id]:o.id}))}><b>{o.id}</b><span>{o.text}</span></button>)}</div><div className="sim-nav">{items.map((it,i)=><button key={it.id} className={`sim-number${answers[it.id]?' answered':''}${i===index?' current':''}`} onClick={()=>setIndex(i)} aria-label={`Questão ${i+1}${answers[it.id]?' respondida':''}`}>{i+1}</button>)}</div><div className="sim-actions"><button className="button button-secondary" disabled={index===0} onClick={()=>setIndex(i=>i-1)}>← Anterior</button><button className="button button-secondary" disabled={index===items.length-1} onClick={()=>setIndex(i=>i+1)}>Próxima →</button><button className="button button-primary" onClick={()=>{if(confirm(`Finalizar o simulado? Você respondeu ${Object.keys(answers).length} de ${items.length} questões.`))finish()}}>Finalizar e ver resultado</button></div></article></>;
 }
 
-export function App() {
-  return (
-    <div className="app-shell">
-      <aside className="sidebar" aria-label="Navegação principal">
-        <NavLink className="brand" to="/" end aria-label="Rumo a Queimados, painel">
-          <span className="brand-symbol" aria-hidden="true">R</span>
-          <span className="brand-name">Rumo a <b>Queimados</b><small>PREPARATÓRIO 2026</small></span>
-        </NavLink>
-        <div className="nav-caption">ESTUDAR</div>
-        <nav className="side-navigation">
-          {navigationItems.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-              <span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-note"><span className="status-dot" /> Seu progresso fica neste dispositivo.</div>
-      </aside>
-
-      <div className="main-column">
-        <header className="topbar">
-          <div><span className="topbar-kicker">PREFEITURA DE QUEIMADOS · RJ</span><span className="topbar-title">Agente Administrativo</span></div>
-          <div className="topbar-date"><span className="status-dot" /> Prova prevista <b>22 nov 2026</b></div>
-        </header>
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            {navigationItems.slice(1).map((item) => <Route key={item.path} path={item.path} element={<AreaPage title={item.label} />} />)}
-            <Route path="*" element={<AreaPage title="Página não encontrada" />} />
-          </Routes>
-        </main>
-        <footer className="app-footer">Uma preparação honesta, guiada pelo edital. <span>Sem promessas mágicas. Com prática e revisão.</span></footer>
-      </div>
-
-      <nav className="mobile-navigation" aria-label="Navegação móvel">
-        {navigationItems.slice(0, 5).map((item) => (
-          <NavLink key={item.path} to={item.path} end={item.path === '/'} className={({ isActive }) => `mobile-nav-item${isActive ? ' active' : ''}`}>
-            <span aria-hidden="true">{item.icon}</span><small>{item.shortLabel}</small>
-          </NavLink>
-        ))}
-      </nav>
-    </div>
-  );
+function AppContent() {
+  const [attempts,setAttempts]=useState<Attempt[]>(storedAttempts); const navigate=useNavigate();
+  useEffect(()=>{localStorage.setItem('rq-attempts',JSON.stringify(attempts))},[attempts]);
+  const record=(questionId:string,selectedOption:OptionId,correct:boolean,errorReason?:ErrorReason,confidence:Attempt['confidence']='sure')=>setAttempts(prev=>[...prev,{id:crypto.randomUUID(),questionId,selectedOption,correct,errorReason,confidence,answeredAt:new Date().toISOString(),elapsedSeconds:0}]);
+  const wrongIds=new Set(attempts.filter(a=>!a.correct).map(a=>a.questionId));
+  return <div className="app-shell"><aside className="sidebar" aria-label="Navegação principal"><NavLink className="brand" to="/" end><span className="brand-symbol">R</span><span className="brand-name">Rumo a <b>Queimados</b><small>PREPARATÓRIO 2026</small></span></NavLink><div className="nav-caption">ESTUDAR</div><nav className="side-navigation">{navigationItems.map(item=><NavLink key={item.path} to={item.path} end={item.path==='/'} className={({isActive})=>`nav-item${isActive?' active':''}`}><span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span></NavLink>)}</nav><div className="sidebar-note"><span className="status-dot"/> Seu progresso fica neste dispositivo.</div></aside><div className="main-column"><header className="topbar"><div><span className="topbar-kicker">PREFEITURA DE QUEIMADOS · RJ</span><span className="topbar-title">Agente Administrativo</span></div><div className="topbar-date"><span className="status-dot"/> Prova prevista <b>{prettyDate(contest.examDate)}</b></div></header><main className="main-content"><Routes><Route path="/" element={<LandingPage attempts={attempts}/>} /><Route path="/questoes" element={<Practice onAnswer={record}/>} /><Route path="/simulados" element={<ExamSimulator onAnswer={record}/>} /><Route path="/erros" element={<><PageTitle kicker="APRENDER COM A CORREÇÃO" title="Caderno de erros">Questões que você errou aparecem novamente para uma nova tentativa.</PageTitle>{wrongIds.size?<Practice key="wrong" onAnswer={record} allowedIds={[...wrongIds]}/>:<div className="panel"><h2>Seu caderno está vazio</h2><p>Responda algumas questões. Quando errar, elas serão registradas aqui.</p><button className="button button-primary" onClick={()=>navigate('/questoes')}>Praticar questões</button></div>}</>} /><Route path="/conteudos" element={<><PageTitle kicker="EDITAL ORGANIZADO" title="Conteúdos cobrados">O roteiro está dividido por matéria e tópico para orientar sua revisão.</PageTitle>{Object.entries(labels).map(([discipline,label])=><section className="panel syllabus" key={discipline}><h2>{label}</h2>{syllabusTopics.filter(t=>t.discipline===discipline).map(t=><details key={t.id}><summary>{t.title}</summary><p>{t.summary}</p><button className="text-button" onClick={()=>navigate('/questoes')}>Praticar questões →</button></details>)}</section>)}</>} /><Route path="/plano" element={<StudyPlan attempts={attempts}/>} /><Route path="/progresso" element={<Progress attempts={attempts}/>} /><Route path="/fontes" element={<><PageTitle kicker="TRANSPARÊNCIA" title="Fontes e limites">A prova oficial e seus critérios vêm do edital. Questões próprias são treino e não substituem prova anterior da banca.</PageTitle>{sourceLinks.map(s=><section className="panel source" key={s.id}><h2>{s.title}</h2><p>{s.note}</p><a href={s.url} target="_blank" rel="noreferrer">Abrir fonte oficial ↗</a></section>)}<div className="panel"><h2>Observação sobre as questões</h2><p>O banco inicial contém itens inéditos para fixação, não questões anteriores do IAN. Não foram apresentados como oficiais. Use provas antigas apenas quando obtidas legalmente e confira as atualizações do edital e das leis municipais.</p></div></>} /><Route path="*" element={<PageTitle kicker="PREPARATÓRIO" title="Página não encontrada"/>} /></Routes></main><footer className="app-footer">Uma preparação honesta, guiada pelo edital. <span>Sem promessas mágicas. Com prática e revisão.</span></footer></div><nav className="mobile-navigation">{navigationItems.slice(0,5).map(item=><NavLink key={item.path} to={item.path} end={item.path==='/'} className={({isActive})=>`mobile-nav-item${isActive?' active':''}`}><span>{item.icon}</span><small>{item.shortLabel}</small></NavLink>)}</nav></div>;
 }
+
+function StudyPlan({attempts}:{attempts:Attempt[]}) { const [minutes,setMinutes]=useState(()=>Number(localStorage.getItem('rq-minutes')||90)); const total=attempts.length; return <><PageTitle kicker="ROTINA ADAPTÁVEL" title="Plano de estudo">Uma sugestão diária baseada no edital. Ajuste o tempo disponível e mantenha constância.</PageTitle><section className="panel"><label>Minutos disponíveis por dia <input type="number" min="20" max="600" step="10" value={minutes} onChange={e=>{const n=Math.max(20,Number(e.target.value));setMinutes(n);localStorage.setItem('rq-minutes',String(n))}}/></label><div className="plan-list">{[['Português','Questões e revisão de gramática',Math.round(minutes*.3)],['Legislação Municipal','Leitura do texto oficial e questões',Math.round(minutes*.25)],['Conhecimentos Específicos','Teoria objetiva e prática',Math.round(minutes*.35)],['Revisão espaçada','Revisar erros e cartões de dúvida',Math.round(minutes*.1)]].map(([a,b,c])=><div className="plan-row" key={String(a)}><b>{a}</b><span>{b}</span><strong>{c} min</strong></div>)}</div><p>Plano de referência; não substitui o acompanhamento do edital oficial. Questões respondidas até agora: {total}.</p></section></> }
+function Progress({attempts}:{attempts:Attempt[]}) { const total=attempts.length; const correct=attempts.filter(a=>a.correct).length; return <><PageTitle kicker="DADOS DO SEU TREINO" title="Seu progresso">Acompanhe acertos e identifique os tópicos que merecem nova revisão. Seus dados ficam salvos neste navegador.</PageTitle><div className="metric-grid"><Metric label="Respondidas" value={total}/><Metric label="Acertos" value={correct}/><Metric label="Erros" value={total-correct}/><Metric label="Aproveitamento" value={`${total?Math.round(correct/total*100):0}%`}/></div><section className="panel"><h2>Desempenho por matéria</h2>{Object.entries(labels).map(([key,label])=>{const set=attempts.filter(a=>questions.find(q=>q.id===a.questionId)?.discipline===key);const pct=set.length?Math.round(set.filter(a=>a.correct).length/set.length*100):0;return <div className="progress-row" key={key}><div><span>{label}</span><b>{pct}% · {set.length} questões</b></div><progress value={pct} max="100"/></div>})}</section><section className="panel"><h2>Erros por motivo</h2>{Object.entries(errorLabels).map(([key,label])=>{const n=attempts.filter(a=>a.errorReason===key).length;return n?<div className="plan-row" key={key}><span>{label}</span><b>{n}</b></div>:null})}{!attempts.some(a=>a.errorReason)&&<p>As respostas com erro e seu motivo aparecerão aqui.</p>}</section><button className="button button-secondary" onClick={()=>{if(confirm('Apagar todo o histórico de respostas deste navegador?')){localStorage.removeItem('rq-attempts');location.reload()}}}>Apagar meu histórico</button></> }
+export function App() { return <AppContent/>; }
