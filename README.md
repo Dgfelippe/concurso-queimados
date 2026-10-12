@@ -1,6 +1,6 @@
-# Rumo a Queimados — Agente Administrativo
+# Dg Concursos — Preparação para concursos públicos
 
-Preparatório para o concurso de Agente Administrativo de Queimados/RJ. O aplicativo organiza tópicos do edital, questões comentadas, simulados completos, caderno de erros e indicadores de desempenho em cinco dimensões. O progresso fica salvo no navegador; com Firebase Spark configurado e login Google, pode sincronizar entre aparelhos.
+Dg Concursos é uma plataforma independente de preparação para concursos públicos. Esta edição começa pelo concurso de Agente Administrativo de Queimados/RJ e organiza tópicos do edital, questões comentadas, simulados, caderno de erros e indicadores de desempenho. O progresso fica salvo no navegador; com Firebase Spark configurado e login Google, pode sincronizar entre aparelhos.
 
 ## Abrir no VS Code
 

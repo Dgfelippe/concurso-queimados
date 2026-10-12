@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 74" role="img" aria-labelledby="title">
+  <title id="title">Dg Concursos</title>
+  <defs>
+    <linearGradient id="mark" x1="8" y1="8" x2="67" y2="66" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7788ff"/>
+      <stop offset="1" stop-color="#23c7a2"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="70" height="70" rx="22" fill="#121a29" stroke="#3d4c69" stroke-width="1.5"/>
+  <rect x="7" y="7" width="60" height="60" rx="18" fill="url(#mark)"/>
+  <text x="37" y="47" text-anchor="middle" fill="#fff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="800" letter-spacing="-1.5">DG</text>
+  <path d="m52 53 4 4 8-9" fill="none" stroke="#7dffe0" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+  <text x="88" y="49" fill="#f5f7ff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="29" font-weight="750" letter-spacing="-1.2">Dg<tspan font-weight="550"> Concursos</tspan></text>
+</svg>

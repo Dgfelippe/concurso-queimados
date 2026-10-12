@@ -68,6 +68,11 @@ const prettyDate = (date: string) => {
   }
 };
 
+function BrandLogo({ theme }: { theme: 'dark' | 'light' }) {
+  const logo = theme === 'light' ? 'dg-concursos-logo-light.svg' : 'dg-concursos-logo.svg';
+  return <img className="landing-brand-logo" src={`${import.meta.env.BASE_URL}${logo}`} alt="Dg Concursos" width="176" height="44" />;
+}
+
 /* =========================================================================
    COMPONENTE: CABEÇALHO DE PÁGINA
    ========================================================================= */
@@ -246,7 +251,7 @@ function LandingPage({ attempts, theme, onToggleTheme, account, onSignOut }: { a
   return (
     <div className="reference-landing">
       <header className="landing-header">
-        <NavLink className="landing-brand" to="/" aria-label="Queimados Agente, início"><span className="landing-brand-mark">Q</span><span><b>Queimados</b><small>· Agente</small></span></NavLink>
+        <NavLink className="landing-brand" to="/" aria-label="Dg Concursos, início"><BrandLogo theme={theme} /></NavLink>
         <div className="landing-header-actions">
           <button className="theme-toggle" type="button" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'} onClick={onToggleTheme}><span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span></button>
           <button className="landing-signin" type="button" onClick={onSignOut}>Sair</button>
@@ -288,7 +293,7 @@ function LandingPage({ attempts, theme, onToggleTheme, account, onSignOut }: { a
       <section className="exam-score-panel"><div className="score-panel-kicker">COMO A PROVA OBJETIVA É MONTADA</div><div className="score-bar" aria-hidden="true"><i /><i /><i /></div><div className="score-columns">{(Object.keys(disciplineRules) as Discipline[]).map((discipline) => <article className={`score-column score-${discipline}`} key={discipline}><strong>{disciplineRules[discipline].maxPoints}<small> pts</small></strong><h3>{labels[discipline]}</h3><p>{disciplineRules[discipline].questionCount} questões, peso {disciplineRules[discipline].pointsPerQuestion}</p></article>)}</div><div className="score-rule">São 100 pontos no total. Fica de fora quem fizer menos de 50 ou zerar alguma disciplina.</div></section>
 
       <aside className="honest-note"><span aria-hidden="true">ⓘ</span><p>A data da prova ({prettyDate(contest.examDate)}) ainda é prevista; confira os canais da Prefeitura e da banca. Cada questão informa sua origem: prova anterior ou item de treino. Use os comentários junto com o edital e mantenha uma rotina que você consiga sustentar.</p></aside>
-      <footer className="landing-footer"><span>Feito para quem estuda para Queimados/RJ e sabe que cada ponto conta.</span><span>Preparatório independente, sem vínculo com a Prefeitura ou a banca.</span></footer>
+      <footer className="landing-footer"><span>Dg Concursos · Cada edital é um novo passo na sua preparação.</span><span>Material independente, sem vínculo com a Prefeitura ou a banca.</span></footer>
     </div>
   );
 }
@@ -314,7 +319,7 @@ function EntryPage({
     <main className="entry-page" data-theme={theme}>
       <div className="entry-wrap">
         <header className="landing-header entry-header">
-          <NavLink className="landing-brand" to="/" aria-label="Queimados Agente, início"><span className="landing-brand-mark">Q</span><span><b>Queimados</b><small>· Agente</small></span></NavLink>
+          <NavLink className="landing-brand" to="/" aria-label="Dg Concursos, início"><BrandLogo theme={theme} /></NavLink>
           <div className="landing-header-actions">
             <button className="theme-toggle" type="button" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'} onClick={onToggleTheme}><span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span></button>
             <button className="landing-signin" type="button" onClick={onSignIn} disabled={!configured || busy}>Entrar</button>
@@ -350,14 +355,14 @@ function EntryPage({
           <article><span>02</span><strong>Entenda</strong><small>Revisões guiadas para aprender com os erros.</small></article>
           <article><span>03</span><strong>Acompanhe</strong><small>Seu histórico e desempenho sincronizados.</small></article>
         </section>
-        <footer className="entry-footer"><span>Preparatório independente para Queimados/RJ.</span><span>Acesso gratuito com sua conta Google.</span></footer>
+        <footer className="entry-footer"><span>Preparação para concursos públicos, começando por Queimados/RJ.</span><span>Acesso gratuito com sua conta Google.</span></footer>
       </div>
     </main>
   );
 }
 
 function EntryLoading({ theme }: { theme: 'dark' | 'light' }) {
-  return <main className="entry-loading" data-theme={theme} role="status"><span className="entry-loading-mark">Q</span><strong>Preparando seu espaço de estudo</strong><small>Estamos carregando sua conta e seu histórico.</small><span className="entry-loading-bar" /></main>;
+  return <main className="entry-loading" data-theme={theme} role="status"><span className="entry-loading-mark">DG</span><strong>Preparando seu espaço de estudo</strong><small>Estamos carregando sua conta e seu histórico.</small><span className="entry-loading-bar" /></main>;
 }
 
 /* =========================================================================
@@ -1510,12 +1515,8 @@ function AppContent() {
   return (
     <div className={`app-shell${isLanding ? ' landing-shell' : ''}`} data-testid="app-shell" data-theme={theme}>
       <aside className="sidebar" aria-label="Navegação principal">
-        <NavLink className="brand" to="/" end>
-          <span className="brand-symbol">Q</span>
-          <span className="brand-name">
-            Rumo a <b>Queimados</b>
-            <small>Preparatório 2026</small>
-          </span>
+        <NavLink className="brand" to="/" end aria-label="Dg Concursos, início">
+          <BrandLogo theme={theme} />
         </NavLink>
 
         <div className="nav-caption">ESTUDOS & TREINO</div>
@@ -1653,7 +1654,7 @@ function AppContent() {
 
         <footer className="app-footer">
           <div>
-            <strong>Rumo a Queimados 2026</strong> — Feito de concurseiro para concurseiro.
+            <strong>Dg Concursos</strong> — Preparação com método, um edital de cada vez.
           </div>
           <span>Banca examinadora: Instituto de Avaliação Nacional (IAN)</span>
         </footer>

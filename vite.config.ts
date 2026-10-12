@@ -23,9 +23,10 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Queimados · Agente',
-        short_name: 'Queimados Agente',
-        description: 'Questões, simulados e acompanhamento de estudos para Agente Administrativo de Queimados.',
+        name: 'Dg Concursos',
+        short_name: 'Dg Concursos',
+        description: 'Preparação para concursos públicos com questões, simulados e acompanhamento de estudos.',
+        lang: 'pt-BR',
         theme_color: '#090a0e',
         background_color: '#090a0e',
         display: 'standalone',
