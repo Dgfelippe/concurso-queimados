@@ -41,10 +41,10 @@
 - `ReviewQueueItem` contém `questionId`, `status` (`pending | reviewing | mastered`), `wrongCount`, `correctSessions`, `lastWrongAttempt`, `lastAttemptAt` e `latestErrorReason`.
 - Uma tentativa só conta para domínio quando tem `sessionId`; respostas certas contam no máximo uma vez por sessão e um erro posterior zera a sequência e reabre o item.
 
-- [ ] Escrever testes para primeiro erro, erro seguido de acerto, acertos em uma única sessão, acertos em duas sessões distintas, erro após domínio e tentativas antigas sem sessão.
-- [ ] Rodar `npm test -- src/domain/review-state.test.ts`; confirmar falhas porque a função ainda não existe.
-- [ ] Implementar `deriveReviewQueue` em ordem cronológica, preservando primeiro erro e último estado.
-- [ ] Rodar o teste focal; confirmar que todos os estados e transições passam.
+- [x] Escrever testes para primeiro erro, erro seguido de acerto, acertos em uma única sessão, acertos em duas sessões distintas, erro após domínio e tentativas antigas sem sessão.
+- [x] Rodar `npm test -- src/domain/review-state.test.ts`; confirmar falhas porque a função ainda não existe.
+- [x] Implementar `deriveReviewQueue` em ordem cronológica, preservando primeiro erro e último estado.
+- [x] Rodar o teste focal; confirmar que todos os estados e transições passam.
 
 ### Task 2: Identificar sessões e persistir tentativas utilizáveis
 
@@ -58,10 +58,10 @@
 - A prática cria um ID por sessão de estudo; cada simulado cria um ID ao iniciar e reutiliza-o ao registrar as respostas da prova.
 - O registro persiste o ID junto com cada tentativa existente em `rq-attempts`; nenhum novo serviço ou chave de sessão de servidor é criado.
 
-- [ ] Adicionar teste de integração que confirma `sessionId` persistido para respostas de prática e simulado.
-- [ ] Executar os testes focalizados; confirmar que falham antes do registro da sessão.
-- [ ] Implementar atribuição de ID estável por sessão e preservar a gravação atual de tentativas.
-- [ ] Executar os testes focados; validar navegação e submissão existentes.
+- [x] Adicionar teste de integração que confirma `sessionId` persistido para respostas de prática e simulado.
+- [x] Executar os testes focalizados; confirmar que falham antes do registro da sessão.
+- [x] Implementar atribuição de ID estável por sessão e preservar a gravação atual de tentativas.
+- [x] Executar os testes focados; validar navegação e submissão existentes.
 
 ### Task 3: Construir aula interativa no Caderno de Erros
 
@@ -76,12 +76,12 @@
 - Cada aula mostra resposta errada registrada, motivo informado, comando da questão, conceito/explicação, análise de cada alternativa (`QuestionOption.note`), dica de estudo e controle de nova tentativa.
 - Após responder, o tutor mostra acerto/erro e mantém o item revisável conforme o estado derivado.
 
-- [ ] Escrever testes de interface para escolha de um erro, abertura da aula, exibição das quatro análises e resposta de nova tentativa.
-- [ ] Executar testes focados; confirmar falhas antes da interface.
-- [ ] Substituir o uso de `Practice` em `/erros` por `ErrorTutor`; manter ligações para o banco quando não houver pendências.
-- [ ] Adicionar resumo de pendentes, em revisão e dominadas e agrupamento simples por disciplina/motivo; ordenar primeiro erros recentes e conhecimentos específicos de maior peso, mantendo todos acessíveis.
-- [ ] Estilizar estados de aula, alternativa e revisão nos temas claro/escuro sem introduzir dependências.
-- [ ] Executar os testes de interface; confirmar persistência do fluxo através do estado global do app.
+- [x] Escrever testes de interface para escolha de um erro, abertura da aula, exibição das quatro análises e resposta de nova tentativa.
+- [x] Executar testes focados; confirmar falhas antes da interface.
+- [x] Substituir o uso de `Practice` em `/erros` por `ErrorTutor`; manter ligações para o banco quando não houver pendências.
+- [x] Adicionar resumo de pendentes, em revisão e dominadas e agrupamento simples por disciplina/motivo; ordenar primeiro erros recentes e conhecimentos específicos de maior peso, mantendo todos acessíveis.
+- [x] Estilizar estados de aula, alternativa e revisão nos temas claro/escuro sem introduzir dependências.
+- [x] Executar os testes de interface; confirmar persistência do fluxo através do estado global do app.
 
 ### Task 4: Auditar procedência e ampliar itens de treino
 
@@ -97,11 +97,11 @@
 - Um item original não pode carregar banca/ano de aplicação; item histórico precisa identificar banca, concurso, ano e referência verificável.
 - Acrescentar pelo menos 24 questões autorais (uma por tópico cadastrado no edital), com gabarito, comentário de cada alternativa, explicação e dica; rotular todas como treino.
 
-- [ ] Auditar todos os itens existentes contra fonte pública individual; criar testes que impeçam rótulo histórico sem referência e rótulo autoral com dados de banca/ano.
-- [ ] Reclassificar como treino os itens cuja aplicação exata não possa ser verificada; preservar como históricos apenas itens sustentados pelas fontes, incluindo links para provas IAN antigas.
-- [ ] Criar os 24 novos itens (um por tópico do edital) e testes de cobertura, unicidade, alternativas, comentários, gabarito e procedência.
-- [ ] Rodar `npm test -- src/data/questions.test.ts`; corrigir dados até a suíte passar.
-- [ ] Confirmar que os filtros existentes “provas anteriores” e “treino” usam os metadados auditados.
+- [x] Auditar todos os itens existentes contra fonte pública individual; criar testes que impeçam rótulo histórico sem referência e rótulo autoral com dados de banca/ano.
+- [x] Reclassificar como treino os itens cuja aplicação exata não possa ser verificada; preservar como históricos apenas itens sustentados pelas fontes, incluindo links para provas IAN antigas.
+- [x] Criar os 24 novos itens (um por tópico do edital) e testes de cobertura, unicidade, alternativas, comentários, gabarito e procedência.
+- [x] Rodar `npm test -- src/data/questions.test.ts`; corrigir dados até a suíte passar.
+- [x] Confirmar que os filtros existentes “provas anteriores” e “treino” usam os metadados auditados.
 
 ### Task 5: Verificação de integração e documentação de fontes
 
@@ -110,11 +110,11 @@
 - Modify: `src/data/sources.ts`
 - Modify: `README.md`
 
-- [ ] Acrescentar teste de fluxo: responder errado, abrir /erros, estudar, acertar em outra sessão, recarregar e ver o item em revisão; repetir em uma terceira sessão para dominar; errar depois para reabrir.
-- [ ] Confirmar pelo teste que simulados conservam 10/5/15, pesos e nota mínima/eliminação por disciplina.
-- [ ] Acrescentar na tela/fontes o limite da amostra histórica IAN e links públicos de prova; não estimar frequência como certeza.
-- [ ] Rodar `npm test` e `npm run build`; corrigir erros encontrados e verificar que a compilação final conclui.
-- [ ] Rever `git diff` para garantir que não entraram mudanças fora do escopo aprovado.
+- [x] Acrescentar teste de fluxo: responder errado, abrir /erros, estudar, acertar em outra sessão, recarregar e ver o item em revisão; repetir em uma terceira sessão para dominar; errar depois para reabrir.
+- [x] Confirmar pelo teste que simulados conservam 10/5/15, pesos e nota mínima/eliminação por disciplina.
+- [x] Acrescentar na tela/fontes o limite da amostra histórica IAN e links públicos de prova; não estimar frequência como certeza.
+- [x] Rodar `npm test` e `npm run build`; corrigir erros encontrados e verificar que a compilação final conclui.
+- [x] Rever `git diff` para garantir que não entraram mudanças fora do escopo aprovado. O diretório já continha mudanças da implementação anterior do mesmo preparatório; foram preservadas e não foram empacotadas em commit novo.
 
 ## Execution Handoff
 

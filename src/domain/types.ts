@@ -12,6 +12,7 @@ export interface QuestionProvenance {
   kind: QuestionSourceKind;
   label: string;
   sourceId: string;
+  url?: string;
   banca?: string;
   contest?: string;
   year?: number;
@@ -25,6 +26,7 @@ export interface Question {
   options: QuestionOption[];
   correctOption: OptionId;
   explanation: string;
+  studyTip?: string;
   provenance: QuestionProvenance;
   difficulty: 'easy' | 'medium' | 'hard';
 }
@@ -62,6 +64,16 @@ export interface Review {
   dueAt: string;
   intervalDays: number;
   completedAt?: string;
+}
+
+export interface ReviewQueueItem {
+  questionId: string;
+  status: 'pending' | 'reviewing' | 'mastered';
+  wrongCount: number;
+  correctSessions: number;
+  lastWrongAttempt: Attempt;
+  lastAttemptAt: string;
+  latestErrorReason?: ErrorReason;
 }
 
 export interface TopicStat {

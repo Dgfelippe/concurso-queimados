@@ -9,8 +9,16 @@ const questionSchema = z.object({
   options: z.array(z.object({ id: z.enum(['A', 'B', 'C', 'D']), text: z.string().min(1), note: z.string().min(1) })).length(4),
   correctOption: z.enum(['A', 'B', 'C', 'D']),
   explanation: z.string().min(1),
-  provenance: z.object({ kind: z.enum(['official', 'third_party', 'original']), label: z.string().min(1), sourceId: z.string().min(1), banca: z.string().optional(), contest: z.string().optional(), year: z.number().optional() }),
+  provenance: z.object({ kind: z.enum(['official', 'third_party', 'original']), label: z.string().min(1), sourceId: z.string().min(1), url: z.string().url().optional(), banca: z.string().optional(), contest: z.string().optional(), year: z.number().optional() }),
   difficulty: z.enum(['easy', 'medium', 'hard'])
+}).superRefine((question, context) => {
+  const provenance = question.provenance;
+  if (provenance.kind !== 'original' && (!provenance.url || !provenance.banca || !provenance.contest || !provenance.year)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['provenance'], message: 'Questão histórica exige URL, banca, concurso e ano verificáveis.' });
+  }
+  if (provenance.kind === 'original' && (provenance.banca || provenance.contest || provenance.year)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['provenance'], message: 'Questão autoral não pode alegar banca, concurso ou ano de aplicação.' });
+  }
 });
 
 export interface QuestionBankValidation {

@@ -19,7 +19,7 @@ O servidor local já foi iniciado nesta sessão. Enquanto ele estiver ligado, at
 - Simulado de 30 questões com distribuição 10/5/15, pesos por disciplina, cronômetro de até 3 horas e resultado por matéria.
 - Navegação responsiva, dados de respostas salvos no navegador e fontes oficiais do edital.
 
-As 60 questões incluídas são inéditas para treino e não são questões oficiais ou provas anteriores do IAN. A data, a distribuição, a pontuação e os critérios devem ser conferidos no edital e em suas retificações.
+O banco reúne questões autorais alinhadas aos tópicos do edital e uma questão histórica com origem identificada, retirada de uma prova IAN de 2016 e conferida em arquivo de terceiro. O acervo histórico é pequeno e não permite afirmar estatísticas de incidência da banca. Confira a origem na questão e consulte o edital oficial e suas retificações.
 
 ## Comandos de manutenção
 
@@ -28,4 +28,4 @@ As 60 questões incluídas são inéditas para treino e não são questões ofic
 
 ## Limites desta versão
 
-O histórico fica no armazenamento local do navegador e pode ser apagado ao limpar os dados do site. Ainda não há conta, sincronização, exportação/importação de backup nem cronograma adaptativo por desempenho. Provas antigas estão linkadas em Fontes e limites para resolver no provedor; não são copiadas para o banco local. Use os links oficiais em **Fontes e limites** para consultar edital, legislação e retificações.
+O histórico fica no armazenamento local do navegador e pode ser apagado ao limpar os dados do site. Ainda não há conta nem sincronização entre dispositivos. Os links na página **Fontes** identificam documentos oficiais e referências externas separadamente.
