@@ -1,6 +1,6 @@
 # Rumo a Queimados — Agente Administrativo
 
-Preparatório local para o concurso de Agente Administrativo de Queimados/RJ. O aplicativo organiza tópicos do edital, questões inéditas comentadas, um simulado completo no formato cadastrado, caderno de erros e indicadores de desempenho. As respostas são guardadas neste navegador.
+Preparatório para o concurso de Agente Administrativo de Queimados/RJ. O aplicativo organiza tópicos do edital, questões comentadas, simulados completos, caderno de erros e indicadores de desempenho em cinco dimensões. O progresso fica salvo no navegador; com Firebase Spark configurado e login Google, pode sincronizar entre aparelhos.
 
 ## Abrir no VS Code
 
@@ -17,7 +17,8 @@ O servidor local já foi iniciado nesta sessão. Enquanto ele estiver ligado, at
 - Questões por matéria e tópico, com comentário e registro de confiança/motivo de erro.
 - Caderno de erros, plano diário ajustável e progresso por matéria.
 - Simulado de 30 questões com distribuição 10/5/15, pesos por disciplina, cronômetro de até 3 horas e resultado por matéria.
-- Navegação responsiva, dados de respostas salvos no navegador e fontes oficiais do edital.
+- Navegação responsiva, respostas e resultados de simulados salvos no navegador, gráfico 5D e fontes oficiais do edital.
+- Sincronização opcional com Firebase Spark: login Google, Firestore com regras por usuário e cache local para uso no mesmo aparelho.
 
 O banco reúne questões autorais alinhadas aos tópicos do edital e uma questão histórica com origem identificada, retirada de uma prova IAN de 2016 e conferida em arquivo de terceiro. O acervo histórico é pequeno e não permite afirmar estatísticas de incidência da banca. Confira a origem na questão e consulte o edital oficial e suas retificações.
 
@@ -26,6 +27,8 @@ O banco reúne questões autorais alinhadas aos tópicos do edital e uma questã
 - `pnpm test` — verifica os testes automatizados.
 - `pnpm build` — verifica os tipos e gera os arquivos da aplicação em `dist/`.
 
-## Limites desta versão
+## Configuração do Firebase gratuito
 
-O histórico fica no armazenamento local do navegador e pode ser apagado ao limpar os dados do site. Ainda não há conta nem sincronização entre dispositivos. Os links na página **Fontes** identificam documentos oficiais e referências externas separadamente.
+Siga [`docs/FIREBASE-GRATUITO.md`](docs/FIREBASE-GRATUITO.md) para criar o projeto no plano Spark, publicar as regras do Firestore e configurar as variáveis públicas no GitHub Actions. Sem essa configuração, o app funciona localmente e não mostra a opção de login. Não habilite faturamento/Blaze se a meta é manter tudo gratuito.
+
+Os links na página **Fontes** identificam documentos oficiais e referências externas separadamente.

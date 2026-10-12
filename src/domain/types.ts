@@ -107,6 +107,9 @@ export interface SimulationSession {
   durationSeconds: number;
   answers: Record<string, OptionId>;
   finishedAt?: string;
+  score?: number;
+  correct?: number;
+  totalQuestions?: number;
 }
 
 export interface DisciplineScore {

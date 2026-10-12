@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { navigationItems } from './navigation';
 import { questions } from '../data/questions';
@@ -7,6 +7,19 @@ import { contest, disciplineRules, scheduleTimeline } from '../data/edital';
 import { sourceLinks } from '../data/sources';
 import { dossieQueimados } from '../data/queimados-dossie';
 import type { Attempt, Discipline, ErrorReason, OptionId } from '../domain/types';
+import type { SimulationSession } from '../domain/types';
+import {
+  firebaseConfigured,
+  loadCloudLearning,
+  observeAuth,
+  saveCloudAttempt,
+  saveCloudSimulation,
+  signInWithGoogle,
+  signOutOfGoogle,
+  subscribeToCloudLearning,
+  syncLocalLearning,
+  type User
+} from '../services/firebase';
 import { ErrorTutor } from './ErrorTutor';
 import '../styles/global.css';
 
@@ -32,6 +45,20 @@ const storedAttempts = (): Attempt[] => {
     return [];
   }
 };
+
+const storedSimulations = (): SimulationSession[] => {
+  try {
+    return JSON.parse(localStorage.getItem('rq-simulations') || '[]') as SimulationSession[];
+  } catch {
+    return [];
+  }
+};
+
+function mergeById<T extends { id: string }>(local: T[], remote: T[]) {
+  const merged = new Map(remote.map((item) => [item.id, item]));
+  for (const item of local) merged.set(item.id, item);
+  return [...merged.values()];
+}
 
 const prettyDate = (date: string) => {
   try {
@@ -97,7 +124,7 @@ function QuestionGlobe() {
 /* =========================================================================
    PÁGINA 1: PAINEL GERAL (DASHBOARD HUMANIZADO)
    ========================================================================= */
-function LandingPage({ attempts, theme, onToggleTheme }: { attempts: Attempt[]; theme: 'dark' | 'light'; onToggleTheme: () => void }) {
+function LandingPage({ attempts, theme, onToggleTheme, account, cloudStatus, onSignIn, onSignOut }: { attempts: Attempt[]; theme: 'dark' | 'light'; onToggleTheme: () => void; account: User | null; cloudStatus: 'local' | 'syncing' | 'synced' | 'offline'; onSignIn: () => void; onSignOut: () => void }) {
   const correct = attempts.filter((a) => a.correct).length;
   const accuracy = attempts.length ? Math.round((correct / attempts.length) * 100) : null;
   const targetDate = new Date(`${contest.examDate}T14:00:00`).getTime();
@@ -110,6 +137,7 @@ function LandingPage({ attempts, theme, onToggleTheme }: { attempts: Attempt[]; 
       <header className="landing-header">
         <NavLink className="landing-brand" to="/" aria-label="Queimados Agente, início"><span className="landing-brand-mark">Q</span><span><b>Queimados</b><small>· Agente</small></span></NavLink>
         <div className="landing-header-actions">
+          <CloudAccountControl account={account} status={cloudStatus} onSignIn={onSignIn} onSignOut={onSignOut} />
           <button className="theme-toggle" type="button" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'} onClick={onToggleTheme}><span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span></button>
           <NavLink className="landing-signin" to="/questoes">Entrar</NavLink>
         </div>
@@ -120,7 +148,7 @@ function LandingPage({ attempts, theme, onToggleTheme }: { attempts: Attempt[]; 
           <div className="exam-date-pill"><span className="status-dot" /> Prova prevista para {prettyDate(contest.examDate)} · faltam <b>{days}</b> dias</div>
           <h1>Estude para Queimados com <span>método</span>, não no improviso.</h1>
           <p>Questões por assunto do edital, simulados no formato da prova e comentários que explicam o porquê de cada alternativa. Um passo de cada vez, com o que você precisa para avançar.</p>
-          <div className="hero-actions"><NavLink className="landing-cta" to="/questoes">Começar a estudar <span aria-hidden="true">→</span></NavLink><small>É grátis. Seu progresso fica salvo neste navegador.</small></div>
+          <div className="hero-actions"><NavLink className="landing-cta" to="/questoes">Começar a estudar <span aria-hidden="true">→</span></NavLink><small>É grátis. {account ? 'Seu progresso está vinculado à sua conta Google.' : firebaseConfigured ? 'Entre com Google para sincronizar entre aparelhos.' : 'Seu progresso fica salvo neste navegador.'}</small></div>
         </div>
         <QuestionGlobe />
       </section>
@@ -520,9 +548,11 @@ function Practice({
    PÁGINA 4: SIMULADOR REALISTA (3 HORAS / 30 QUESTÕES)
    ========================================================================= */
 function ExamSimulator({
-  onAnswer
+  onAnswer,
+  onSimulation
 }: {
   onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string) => void;
+  onSimulation: (session: SimulationSession) => void;
 }) {
   const [items, setItems] = useState<typeof questions>([]);
   const [answers, setAnswers] = useState<Record<string, OptionId>>({});
@@ -530,6 +560,7 @@ function ExamSimulator({
   const [seconds, setSeconds] = useState(contest.durationMinutes * 60);
   const [isPaused, setIsPaused] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
   const [result, setResult] = useState<null | {
     points: number;
     correct: number;
@@ -577,6 +608,7 @@ function ExamSimulator({
     setSeconds(contest.durationMinutes * 60);
     setIsPaused(false);
     setSessionId(crypto.randomUUID());
+    setStartedAt(new Date().toISOString());
     setResult(null);
   };
 
@@ -605,12 +637,28 @@ function ExamSimulator({
     const totalPoints = Object.values(by).reduce((acc, curr) => acc + curr.points, 0);
     const zeroDisc = (Object.keys(by) as Discipline[]).filter((d) => by[d].hits === 0).map((d) => labels[d]);
 
+    const elapsedSeconds = contest.durationMinutes * 60 - seconds;
+    if (sessionId && startedAt) {
+      onSimulation({
+        id: sessionId,
+        questionIds: items.map((item) => item.id),
+        mode: 'full',
+        startedAt,
+        durationSeconds: elapsedSeconds,
+        answers,
+        finishedAt: new Date().toISOString(),
+        score: totalPoints,
+        correct: hits,
+        totalQuestions: items.length
+      });
+    }
+
     setResult({
       points: totalPoints,
       correct: hits,
       zero: zeroDisc,
       by,
-      elapsed: contest.durationMinutes * 60 - seconds
+      elapsed: elapsedSeconds
     });
   };
 
@@ -963,7 +1011,65 @@ function StudyPlan({ attempts }: { attempts: Attempt[] }) {
 /* =========================================================================
    PÁGINA 8: PROGRESSO & ESTATÍSTICAS
    ========================================================================= */
-function Progress({ attempts }: { attempts: Attempt[] }) {
+function PerformanceRadar({ attempts, simulations }: { attempts: Attempt[]; simulations: SimulationSession[] }) {
+  const totalTopics = new Set(questions.map((question) => question.topicId)).size || 1;
+  const completedTopics = new Set(attempts.map((attempt) => questions.find((question) => question.id === attempt.questionId)?.topicId).filter(Boolean));
+  const activeDays = new Set(attempts
+    .filter((attempt) => Date.now() - new Date(attempt.answeredAt).getTime() <= 28 * 24 * 60 * 60 * 1000)
+    .map((attempt) => attempt.answeredAt.slice(0, 10))).size;
+  const correct = attempts.filter((attempt) => attempt.correct).length;
+  const bestExam = Math.max(0, ...simulations.map((simulation) => simulation.score ?? 0));
+  const metrics = [
+    { label: 'Precisão', value: attempts.length ? Math.round(correct / attempts.length * 100) : 0 },
+    { label: 'Regularidade', value: Math.min(100, Math.round(activeDays / 20 * 100)) },
+    { label: 'Volume', value: Math.min(100, attempts.length) },
+    { label: 'Cobertura do edital', value: Math.min(100, Math.round(completedTopics.size / totalTopics * 100)) },
+    { label: 'Simulados', value: Math.round(bestExam) }
+  ];
+  const center = { x: 180, y: 145 };
+  const radius = 94;
+  const angleAt = (index: number) => -Math.PI / 2 + index * Math.PI * 2 / metrics.length;
+  const pointAt = (index: number, distance: number) => ({ x: center.x + Math.cos(angleAt(index)) * distance, y: center.y + Math.sin(angleAt(index)) * distance });
+  const polygon = (scale: number) => metrics.map((_, index) => {
+    const point = pointAt(index, radius * scale);
+    return `${point.x},${point.y}`;
+  }).join(' ');
+  const performancePolygon = metrics.map((metric, index) => {
+    const point = pointAt(index, radius * metric.value / 100);
+    return `${point.x},${point.y}`;
+  }).join(' ');
+
+  return (
+    <section className="panel performance-panel" aria-labelledby="performance-5d-title">
+      <div className="performance-heading">
+        <div><span className="eyebrow">VISÃO EM CINCO DIMENSÕES</span><h2 id="performance-5d-title">Seu desempenho 5D</h2></div>
+        <p>Cada eixo mostra uma parte diferente da sua preparação. O gráfico ganha forma conforme você estuda.</p>
+      </div>
+      <div className="performance-layout">
+        <svg className="performance-radar" viewBox="0 0 360 290" role="img" aria-label={`Gráfico de desempenho em cinco dimensões: ${metrics.map((metric) => `${metric.label} ${metric.value}%`).join(', ')}.`} data-testid="performance-radar">
+          <defs><linearGradient id="radar-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#8490ff" stopOpacity=".44"/><stop offset="1" stopColor="#36d8bd" stopOpacity=".18"/></linearGradient></defs>
+          {[0.2, 0.4, 0.6, 0.8, 1].map((scale) => <polygon key={scale} points={polygon(scale)} className="radar-grid" />)}
+          {metrics.map((metric, index) => {
+            const endpoint = pointAt(index, radius);
+            const label = pointAt(index, 122);
+            return <g key={metric.label}><line x1={center.x} y1={center.y} x2={endpoint.x} y2={endpoint.y} className="radar-axis"/><text x={label.x} y={label.y} textAnchor={Math.cos(angleAt(index)) > .35 ? 'start' : Math.cos(angleAt(index)) < -.35 ? 'end' : 'middle'} className="radar-label">{metric.label}</text></g>;
+          })}
+          {attempts.length > 0 && <polygon points={performancePolygon} className="radar-value" />}
+          {attempts.length > 0 && metrics.map((metric, index) => {
+            const point = pointAt(index, radius * metric.value / 100);
+            return <circle key={metric.label} cx={point.x} cy={point.y} r="4" className="radar-dot" />;
+          })}
+        </svg>
+        <div className="performance-metrics" aria-label="Valores das cinco dimensões">
+          {metrics.map((metric) => <div className="performance-metric" key={metric.label}><span>{metric.label}</span><strong>{metric.value}%</strong></div>)}
+        </div>
+      </div>
+      {!attempts.length && <p className="muted">Resolva algumas questões para o gráfico começar a refletir seu ritmo e seus pontos fortes.</p>}
+    </section>
+  );
+}
+
+function Progress({ attempts, simulations, account }: { attempts: Attempt[]; simulations: SimulationSession[]; account: User | null }) {
   const total = attempts.length;
   const correct = attempts.filter((a) => a.correct).length;
 
@@ -979,6 +1085,8 @@ function Progress({ attempts }: { attempts: Attempt[] }) {
         <Metric label="Erros" value={total - correct} />
         <Metric label="Taxa de Precisão" value={`${total ? Math.round((correct / total) * 100) : 0}%`} />
       </div>
+
+      <PerformanceRadar attempts={attempts} simulations={simulations} />
 
       <section className="panel">
         <h2>Desempenho por Matéria</h2>
@@ -1013,7 +1121,21 @@ function Progress({ attempts }: { attempts: Attempt[] }) {
         )}
       </section>
 
-      <div style={{ marginTop: '24px' }}>
+      <section className="panel simulation-history" aria-labelledby="simulation-history-title">
+        <h2 id="simulation-history-title">Histórico de simulados completos</h2>
+        {simulations.length ? (
+          <div className="simulation-history-list">
+            {[...simulations].sort((a, b) => (b.finishedAt || '').localeCompare(a.finishedAt || '')).map((simulation) => (
+              <article className="simulation-history-item" key={simulation.id}>
+                <div><strong>{new Date(simulation.finishedAt || simulation.startedAt).toLocaleString('pt-BR', { dateStyle: 'medium', timeStyle: 'short' })}</strong><small>{simulation.correct ?? 0} de {simulation.totalQuestions ?? simulation.questionIds.length} acertos · {Math.floor(simulation.durationSeconds / 60)} min</small></div>
+                <b>{(simulation.score ?? 0).toFixed(1)} pontos</b>
+              </article>
+            ))}
+          </div>
+        ) : <p className="muted">Quando você concluir um simulado, o resultado e as respostas ficam registrados aqui.</p>}
+      </section>
+
+      {!account && <div style={{ marginTop: '24px' }}>
         <button
           className="button button-secondary"
           onClick={() => {
@@ -1025,8 +1147,29 @@ function Progress({ attempts }: { attempts: Attempt[] }) {
         >
           Resetar Histórico deste Navegador
         </button>
-      </div>
+      </div>}
     </>
+  );
+}
+
+function CloudAccountControl({
+  account,
+  status,
+  onSignIn,
+  onSignOut
+}: {
+  account: User | null;
+  status: 'local' | 'syncing' | 'synced' | 'offline';
+  onSignIn: () => void;
+  onSignOut: () => void;
+}) {
+  if (!firebaseConfigured) return null;
+  const statusText = status === 'syncing' ? 'Sincronizando seu histórico…' : status === 'synced' ? 'Histórico sincronizado' : status === 'offline' ? 'Sem conexão com a nuvem; seus dados seguem salvos neste aparelho.' : 'Entre para manter seu histórico em outros aparelhos.';
+  return (
+    <div className="cloud-account-control">
+      {account ? <><span className="cloud-account-name">{account.displayName || 'Conta Google'}</span><button className="cloud-account-button" type="button" onClick={onSignOut}>Sair</button></> : <button className="cloud-account-button" type="button" onClick={onSignIn}>Salvar na nuvem com Google</button>}
+      <small className="cloud-sync-status" role="status">{statusText}</small>
+    </div>
   );
 }
 
@@ -1034,15 +1177,112 @@ function Progress({ attempts }: { attempts: Attempt[] }) {
    COMPONENTE PRINCIPAL (LAYOUT & ROTAS)
    ========================================================================= */
 function AppContent() {
-  const [attempts, setAttempts] = useState<Attempt[]>(storedAttempts);
+  const [attempts, setAttempts] = useState<Attempt[]>(() => firebaseConfigured ? [] : storedAttempts());
+  const [simulations, setSimulations] = useState<SimulationSession[]>(() => firebaseConfigured ? [] : storedSimulations());
+  const attemptsRef = useRef(attempts);
+  const simulationsRef = useRef(simulations);
+  attemptsRef.current = attempts;
+  simulationsRef.current = simulations;
+  const [account, setAccount] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(!firebaseConfigured);
+  const [cloudReady, setCloudReady] = useState(!firebaseConfigured);
+  const [cloudStatus, setCloudStatus] = useState<'local' | 'syncing' | 'synced' | 'offline'>('local');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStorage.getItem('rq-theme') === 'light' ? 'light' : 'dark');
   const navigate = useNavigate();
   const location = useLocation();
   const isLanding = location.pathname === '/';
 
   useEffect(() => {
-    localStorage.setItem('rq-attempts', JSON.stringify(attempts));
-  }, [attempts]);
+    if (!authReady) return;
+    const attemptKey = account ? `rq-attempts:${account.uid}` : 'rq-attempts';
+    const simulationKey = account ? `rq-simulations:${account.uid}` : 'rq-simulations';
+    localStorage.setItem(attemptKey, JSON.stringify(attempts));
+    localStorage.setItem(simulationKey, JSON.stringify(simulations));
+    if (account) localStorage.setItem('rq-cloud-owner', account.uid);
+  }, [account, attempts, authReady, simulations]);
+
+  useEffect(() => {
+    if (!firebaseConfigured) return;
+    let cancelled = false;
+    let stopLearning = () => {};
+    const unsubscribe = observeAuth((user) => {
+      setAuthReady(false);
+      setAccount(user);
+      if (!user) {
+        stopLearning();
+        if (cancelled) return;
+        setAttempts(storedAttempts());
+        setSimulations(storedSimulations());
+        setCloudReady(true);
+        setCloudStatus('local');
+        setAuthReady(true);
+        return;
+      }
+
+      setCloudReady(false);
+      setCloudStatus('syncing');
+      const owner = localStorage.getItem('rq-cloud-owner');
+      const localAttemptKey = `rq-attempts:${user.uid}`;
+      const localSimulationKey = `rq-simulations:${user.uid}`;
+      const accountAttempts = JSON.parse(localStorage.getItem(localAttemptKey) || '[]') as Attempt[];
+      const accountSimulations = JSON.parse(localStorage.getItem(localSimulationKey) || '[]') as SimulationSession[];
+      const importedAttempts = accountAttempts.length || owner ? accountAttempts : storedAttempts();
+      const importedSimulations = accountSimulations.length || owner ? accountSimulations : storedSimulations();
+
+      void loadCloudLearning(user.uid).then(async (remote) => {
+        if (cancelled) return;
+        // Start from this Google account's own local copy plus its cloud copy.
+        // Never merge the previous account's in-memory state into another account.
+        const mergedAttempts = mergeById(importedAttempts, remote.attempts);
+        const mergedSimulations = mergeById(importedSimulations, remote.simulations);
+        localStorage.setItem(localAttemptKey, JSON.stringify(mergedAttempts));
+        localStorage.setItem(localSimulationKey, JSON.stringify(mergedSimulations));
+        localStorage.setItem('rq-cloud-owner', user.uid);
+        if (!owner) {
+          localStorage.removeItem('rq-attempts');
+          localStorage.removeItem('rq-simulations');
+        }
+        setAttempts(mergedAttempts);
+        setSimulations(mergedSimulations);
+        setCloudReady(true);
+        setAuthReady(true);
+        try {
+          await syncLocalLearning(user.uid, mergedAttempts, mergedSimulations);
+          if (!cancelled) setCloudStatus('synced');
+        } catch {
+          if (!cancelled) setCloudStatus('offline');
+        }
+        stopLearning = subscribeToCloudLearning(user.uid, {
+          onAttempts: (remoteAttempts) => setAttempts((local) => mergeById(local, remoteAttempts)),
+          onSimulations: (remoteSimulations) => setSimulations((local) => mergeById(local, remoteSimulations)),
+          onError: () => setCloudStatus('offline')
+        });
+      }).catch(() => {
+        if (cancelled) return;
+        setAttempts(importedAttempts);
+        setSimulations(importedSimulations);
+        setCloudReady(true);
+        setAuthReady(true);
+        setCloudStatus('offline');
+      });
+    });
+    return () => {
+      cancelled = true;
+      stopLearning();
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!account || !cloudReady) return;
+    const syncWhenOnline = () => {
+      void syncLocalLearning(account.uid, attemptsRef.current, simulationsRef.current)
+        .then(() => setCloudStatus('synced'))
+        .catch(() => setCloudStatus('offline'));
+    };
+    window.addEventListener('online', syncWhenOnline);
+    return () => window.removeEventListener('online', syncWhenOnline);
+  }, [account, cloudReady]);
 
   useEffect(() => {
     localStorage.setItem('rq-theme', theme);
@@ -1056,21 +1296,31 @@ function AppContent() {
     confidence: Attempt['confidence'] = 'sure',
     sessionId?: string
   ) => {
-    setAttempts((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        questionId,
-        selectedOption,
-        correct,
-        errorReason,
-        confidence,
-        sessionId,
-        answeredAt: new Date().toISOString(),
-        elapsedSeconds: 0
-      }
-    ]);
+    const attempt: Attempt = {
+      id: crypto.randomUUID(),
+      questionId,
+      selectedOption,
+      correct,
+      errorReason,
+      confidence,
+      sessionId,
+      answeredAt: new Date().toISOString(),
+      elapsedSeconds: 0
+    };
+    setAttempts((prev) => [...prev, attempt]);
+    if (account) void saveCloudAttempt(account.uid, attempt).then(() => setCloudStatus('synced')).catch(() => setCloudStatus('offline'));
   };
+
+  const recordSimulation = (session: SimulationSession) => {
+    setSimulations((prev) => mergeById(prev, [session]));
+    if (account) void saveCloudSimulation(account.uid, session).then(() => setCloudStatus('synced')).catch(() => setCloudStatus('offline'));
+  };
+
+  const handleSignIn = () => {
+    setCloudStatus('syncing');
+    void signInWithGoogle().catch(() => setCloudStatus('offline'));
+  };
+  const handleSignOut = () => void signOutOfGoogle();
 
   return (
     <div className={`app-shell${isLanding ? ' landing-shell' : ''}`} data-testid="app-shell" data-theme={theme}>
@@ -1099,7 +1349,7 @@ function AppContent() {
         </nav>
 
         <div className="sidebar-note">
-          <span className="status-dot" /> Suas respostas ficam salvas neste navegador.
+          <span className="status-dot" /> {firebaseConfigured ? account ? 'Seu histórico acompanha esta conta Google.' : 'Entre com Google para sincronizar entre aparelhos.' : 'Suas respostas ficam salvas neste navegador.'}
         </div>
       </aside>
 
@@ -1110,6 +1360,7 @@ function AppContent() {
             <span className="topbar-title">Preparatório — Agente Administrativo</span>
           </div>
           <div className="topbar-actions">
+            <CloudAccountControl account={account} status={cloudStatus} onSignIn={handleSignIn} onSignOut={handleSignOut} />
             <div className="topbar-date">
               <span className="status-dot" /> Prova em <b>{prettyDate(contest.examDate)} (Tarde)</b>
             </div>
@@ -1122,10 +1373,10 @@ function AppContent() {
 
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<LandingPage attempts={attempts} theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} />} />
+            <Route path="/" element={<LandingPage attempts={attempts} theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} account={account} cloudStatus={cloudStatus} onSignIn={handleSignIn} onSignOut={handleSignOut} />} />
             <Route path="/edital" element={<EditalGuidePage />} />
             <Route path="/questoes" element={<Practice onAnswer={record} />} />
-            <Route path="/simulados" element={<ExamSimulator onAnswer={record} />} />
+            <Route path="/simulados" element={<ExamSimulator onAnswer={record} onSimulation={recordSimulation} />} />
             <Route path="/erros" element={<CadernoErros attempts={attempts} onAnswer={record} />} />
             <Route path="/legislacao" element={<DossieQueimadosPage />} />
             <Route
@@ -1162,7 +1413,7 @@ function AppContent() {
               }
             />
             <Route path="/plano" element={<StudyPlan attempts={attempts} />} />
-            <Route path="/progresso" element={<Progress attempts={attempts} />} />
+            <Route path="/progresso" element={<Progress attempts={attempts} simulations={simulations} account={account} />} />
             <Route
               path="/fontes"
               element={
