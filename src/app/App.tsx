@@ -99,7 +99,26 @@ const networkPoints = Array.from({ length: 54 }, (_, index) => {
 
 function QuestionGlobe() {
   return (
-    <div className="hero-visual" aria-label="Ilustração das três matérias do concurso">
+    <div
+      className="hero-visual"
+      aria-label="Ilustração interativa das três matérias do concurso"
+      onPointerMove={(event) => {
+        if (event.pointerType === 'touch' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const horizontal = (event.clientX - bounds.left) / bounds.width - 0.5;
+        const vertical = (event.clientY - bounds.top) / bounds.height - 0.5;
+        event.currentTarget.style.setProperty('--globe-tilt-x', `${-vertical * 12}deg`);
+        event.currentTarget.style.setProperty('--globe-tilt-y', `${horizontal * 12}deg`);
+        event.currentTarget.style.setProperty('--globe-shift-x', `${horizontal * 5}px`);
+        event.currentTarget.style.setProperty('--globe-shift-y', `${vertical * 5}px`);
+      }}
+      onPointerLeave={(event) => {
+        event.currentTarget.style.setProperty('--globe-tilt-x', '0deg');
+        event.currentTarget.style.setProperty('--globe-tilt-y', '0deg');
+        event.currentTarget.style.setProperty('--globe-shift-x', '0px');
+        event.currentTarget.style.setProperty('--globe-shift-y', '0px');
+      }}
+    >
       <span className="visual-caption visual-caption-top">{questions.length} QUESTÕES NO BANCO</span>
       <svg className="network-globe" viewBox="0 0 320 300" role="img" aria-label="Rede de pontos coloridos representando as matérias">
         <defs><clipPath id="globe-clip"><circle cx="160" cy="150" r="126" /></clipPath></defs>
