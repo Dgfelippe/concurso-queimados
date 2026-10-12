@@ -193,6 +193,7 @@ describe('navegação principal', () => {
 
     cleanup();
     await renderApp(['/erros']);
+    await screen.findByRole('heading', { name: 'Aula da questão' });
     const finalRetryArea = within(document.querySelector('.review-retry-section')!);
     await user.click(finalRetryArea.getByRole('button', { name: new RegExp(wrongOption.text) }));
     await user.click(finalRetryArea.getByRole('button', { name: 'Conferir resposta' }));

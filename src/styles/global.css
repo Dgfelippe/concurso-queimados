@@ -2101,6 +2101,9 @@ progress::-webkit-progress-value {
   .app-shell:not(.landing-shell) .main-column { width: calc(100% - 232px); margin-left: 232px; }
 }
 @media (max-width: 720px) {
+  .app-shell:not(.landing-shell) .sidebar { display: none; }
+  .app-shell:not(.landing-shell) .main-column { width: 100%; margin-left: 0; padding-bottom: 74px; }
+  .app-shell:not(.landing-shell) .main-content { width: 100%; }
   .app-shell:not(.landing-shell) .topbar { backdrop-filter: blur(14px); }
   .app-shell:not(.landing-shell) .topbar-actions {
     display: grid;
