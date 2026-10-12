@@ -1245,6 +1245,7 @@ progress::-webkit-progress-value {
 .hero-actions small { color: var(--landing-blue); font-size: 13px; font-style: italic; }
 .hero-visual { position: relative; min-height: 370px; display: grid; place-items: center; perspective: 900px; }
 .network-globe { width: min(100%, 430px); overflow: visible; transform: translate3d(var(--globe-shift-x, 0px), var(--globe-shift-y, 0px), 0) rotateX(var(--globe-tilt-x, 0deg)) rotateY(var(--globe-tilt-y, 0deg)); transform-origin: center; transition: transform .2s cubic-bezier(.2,.7,.25,1); filter: drop-shadow(0 0 28px rgba(76, 88, 232, .12)); }
+.globe-network { transform-box: view-box; transform-origin: 160px 150px; transform: translate(var(--network-shift-x, 0px), var(--network-shift-y, 0px)) rotate(var(--network-rotation, 0deg)); transition: transform .18s cubic-bezier(.2,.7,.25,1); }
 .globe-outline { fill: rgba(15,17,24,.16); stroke: rgba(161,169,197,.16); stroke-width: .8; }
 .globe-lines line { stroke: rgba(148,157,190,.25); stroke-width: .65; }
 .globe-dot.tone-0 { fill: var(--landing-blue); filter: drop-shadow(0 0 4px var(--landing-blue)); }
@@ -1470,8 +1471,8 @@ progress::-webkit-progress-value {
 
 @media (prefers-reduced-motion: reduce) {
   .topic-marquee-track { animation: none; }
-  .landing-cta,.feature-card,.network-globe { transition: none; }
-  .network-globe { transform: none; }
+  .landing-cta,.feature-card,.network-globe,.globe-network { transition: none; }
+  .network-globe,.globe-network { transform: none; }
 }
 
 /* Study workspace — one visual system across practice, syllabus and progress. */

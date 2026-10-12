@@ -111,25 +111,35 @@ function QuestionGlobe() {
         event.currentTarget.style.setProperty('--globe-tilt-y', `${horizontal * 12}deg`);
         event.currentTarget.style.setProperty('--globe-shift-x', `${horizontal * 5}px`);
         event.currentTarget.style.setProperty('--globe-shift-y', `${vertical * 5}px`);
+        event.currentTarget.style.setProperty('--network-shift-x', `${horizontal * -9}px`);
+        event.currentTarget.style.setProperty('--network-shift-y', `${vertical * -7}px`);
+        event.currentTarget.style.setProperty('--network-rotation', `${horizontal * 1.8}deg`);
       }}
       onPointerLeave={(event) => {
         event.currentTarget.style.setProperty('--globe-tilt-x', '0deg');
         event.currentTarget.style.setProperty('--globe-tilt-y', '0deg');
         event.currentTarget.style.setProperty('--globe-shift-x', '0px');
         event.currentTarget.style.setProperty('--globe-shift-y', '0px');
+        event.currentTarget.style.setProperty('--network-shift-x', '0px');
+        event.currentTarget.style.setProperty('--network-shift-y', '0px');
+        event.currentTarget.style.setProperty('--network-rotation', '0deg');
       }}
     >
       <span className="visual-caption visual-caption-top">{questions.length} QUESTÕES NO BANCO</span>
       <svg className="network-globe" viewBox="0 0 320 300" role="img" aria-label="Rede de pontos coloridos representando as matérias">
         <defs><clipPath id="globe-clip"><circle cx="160" cy="150" r="126" /></clipPath></defs>
         <circle cx="160" cy="150" r="126" className="globe-outline" />
-        <g clipPath="url(#globe-clip)" className="globe-lines">
-          {networkPoints.map((point, index) => {
-            const next = networkPoints[(index + 7) % networkPoints.length];
-            const alternate = networkPoints[(index + 15) % networkPoints.length];
-            return <g key={index}><line x1={point.x} y1={point.y} x2={next.x} y2={next.y} /><line x1={point.x} y1={point.y} x2={alternate.x} y2={alternate.y} /></g>;
-          })}
-          {networkPoints.map((point, index) => <circle key={`node-${index}`} cx={point.x} cy={point.y} r={index % 5 === 0 ? 2.6 : 1.7} className={`globe-dot tone-${index % 3}`} />)}
+        <g clipPath="url(#globe-clip)">
+          <g className="globe-network">
+            <g className="globe-lines">
+              {networkPoints.map((point, index) => {
+                const next = networkPoints[(index + 7) % networkPoints.length];
+                const alternate = networkPoints[(index + 15) % networkPoints.length];
+                return <g key={index}><line x1={point.x} y1={point.y} x2={next.x} y2={next.y} /><line x1={point.x} y1={point.y} x2={alternate.x} y2={alternate.y} /></g>;
+              })}
+              {networkPoints.map((point, index) => <circle key={`node-${index}`} cx={point.x} cy={point.y} r={index % 5 === 0 ? 2.6 : 1.7} className={`globe-dot tone-${index % 3}`} />)}
+            </g>
+          </g>
         </g>
         <path d="M25 190 C95 160 225 170 295 125" className="globe-orbit" />
         <path d="M42 233 C115 210 211 219 278 183" className="globe-orbit secondary" />
