@@ -91,54 +91,136 @@ function Metric({ label, value, sub }: { label: string; value: string | number; 
   );
 }
 
+const globeRadius = 108;
 const networkPoints = Array.from({ length: 54 }, (_, index) => {
+  const vertical = 1 - (2 * (index + 0.5)) / 54;
+  const ringRadius = Math.sqrt(1 - vertical * vertical);
   const angle = index * 2.399963;
-  const radius = Math.sqrt((index + 0.5) / 54) * 126;
-  return { x: 160 + Math.cos(angle) * radius, y: 150 + Math.sin(angle) * radius };
+  return {
+    x: Math.cos(angle) * ringRadius * globeRadius,
+    y: vertical * globeRadius,
+    z: Math.sin(angle) * ringRadius * globeRadius
+  };
 });
+const networkEdges = networkPoints.flatMap((_, index) => [
+  [index, (index + 7) % networkPoints.length] as const,
+  [index, (index + 15) % networkPoints.length] as const
+]);
+
+function projectGlobe(rotationX: number, rotationY: number) {
+  const sinX = Math.sin(rotationX);
+  const cosX = Math.cos(rotationX);
+  const sinY = Math.sin(rotationY);
+  const cosY = Math.cos(rotationY);
+
+  return networkPoints.map((point) => {
+    const rotatedX = point.x * cosY + point.z * sinY;
+    const depthAfterY = -point.x * sinY + point.z * cosY;
+    const rotatedY = point.y * cosX - depthAfterY * sinX;
+    const depth = point.y * sinX + depthAfterY * cosX;
+    const perspective = 680 / (680 - depth);
+
+    return {
+      x: 160 + rotatedX * perspective,
+      y: 150 + rotatedY * perspective,
+      depth: depth / globeRadius
+    };
+  });
+}
 
 function QuestionGlobe() {
+  const globeRef = useRef<SVGSVGElement>(null);
+  const targetRotation = useRef({ x: 0, y: 0 });
+  const currentRotation = useRef({ x: 0, y: 0 });
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const animationFrame = useRef<number | null>(null);
+  const initialNodes = projectGlobe(0, 0);
+
+  const animateGlobe = () => {
+    const svg = globeRef.current;
+    if (!svg) {
+      animationFrame.current = null;
+      return;
+    }
+
+    currentRotation.current.x += (targetRotation.current.x - currentRotation.current.x) * 0.16;
+    currentRotation.current.y += (targetRotation.current.y - currentRotation.current.y) * 0.16;
+    const projectedNodes = projectGlobe(currentRotation.current.x, currentRotation.current.y);
+    const nodeElements = svg.querySelectorAll<SVGCircleElement>('.globe-dot');
+    nodeElements.forEach((node, index) => {
+      const point = projectedNodes[index];
+      const front = (point.depth + 1) / 2;
+      node.setAttribute('cx', point.x.toFixed(2));
+      node.setAttribute('cy', point.y.toFixed(2));
+      node.setAttribute('r', ((index % 5 === 0 ? 2.6 : 1.7) * (0.66 + front * 0.55)).toFixed(2));
+      node.setAttribute('opacity', (0.22 + front * 0.78).toFixed(2));
+    });
+
+    const edgeElements = svg.querySelectorAll<SVGLineElement>('.globe-edge');
+    edgeElements.forEach((line, index) => {
+      const [startIndex, endIndex] = networkEdges[index];
+      const start = projectedNodes[startIndex];
+      const end = projectedNodes[endIndex];
+      const depth = (start.depth + end.depth) / 2;
+      line.setAttribute('x1', start.x.toFixed(2));
+      line.setAttribute('y1', start.y.toFixed(2));
+      line.setAttribute('x2', end.x.toFixed(2));
+      line.setAttribute('y2', end.y.toFixed(2));
+      line.setAttribute('opacity', (0.07 + ((depth + 1) / 2) * 0.3).toFixed(2));
+    });
+
+    const orbits = svg.querySelectorAll<SVGPathElement>('.globe-orbit');
+    orbits[0]?.setAttribute('transform', `rotate(${(currentRotation.current.y * 180) / Math.PI} 160 150)`);
+    orbits[1]?.setAttribute('transform', `rotate(${(currentRotation.current.x * 180) / Math.PI} 160 150)`);
+
+    const unsettled = Math.abs(targetRotation.current.x - currentRotation.current.x) > 0.001 ||
+      Math.abs(targetRotation.current.y - currentRotation.current.y) > 0.001;
+    animationFrame.current = unsettled ? requestAnimationFrame(animateGlobe) : null;
+  };
+
+  useEffect(() => () => {
+    if (animationFrame.current !== null) cancelAnimationFrame(animationFrame.current);
+  }, []);
+
   return (
     <div
       className="hero-visual"
       aria-label="Ilustração interativa das três matérias do concurso"
       onPointerMove={(event) => {
-        if (event.pointerType === 'touch' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const bounds = event.currentTarget.getBoundingClientRect();
-        const horizontal = (event.clientX - bounds.left) / bounds.width - 0.5;
-        const vertical = (event.clientY - bounds.top) / bounds.height - 0.5;
-        event.currentTarget.style.setProperty('--globe-tilt-x', `${-vertical * 12}deg`);
-        event.currentTarget.style.setProperty('--globe-tilt-y', `${horizontal * 12}deg`);
-        event.currentTarget.style.setProperty('--globe-shift-x', `${horizontal * 5}px`);
-        event.currentTarget.style.setProperty('--globe-shift-y', `${vertical * 5}px`);
-        event.currentTarget.style.setProperty('--network-shift-x', `${horizontal * -9}px`);
-        event.currentTarget.style.setProperty('--network-shift-y', `${vertical * -7}px`);
-        event.currentTarget.style.setProperty('--network-rotation', `${horizontal * 1.8}deg`);
+        if (event.pointerType === 'touch' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+        const previous = lastPointer.current;
+        if (previous) {
+          const deltaX = Math.max(-80, Math.min(80, event.clientX - previous.x));
+          const deltaY = Math.max(-80, Math.min(80, event.clientY - previous.y));
+          targetRotation.current.y += deltaX * 0.015;
+          targetRotation.current.x -= deltaY * 0.012;
+        }
+        lastPointer.current = { x: event.clientX, y: event.clientY };
+        if (animationFrame.current === null) animationFrame.current = requestAnimationFrame(animateGlobe);
       }}
-      onPointerLeave={(event) => {
-        event.currentTarget.style.setProperty('--globe-tilt-x', '0deg');
-        event.currentTarget.style.setProperty('--globe-tilt-y', '0deg');
-        event.currentTarget.style.setProperty('--globe-shift-x', '0px');
-        event.currentTarget.style.setProperty('--globe-shift-y', '0px');
-        event.currentTarget.style.setProperty('--network-shift-x', '0px');
-        event.currentTarget.style.setProperty('--network-shift-y', '0px');
-        event.currentTarget.style.setProperty('--network-rotation', '0deg');
-      }}
+      onPointerLeave={() => { lastPointer.current = null; }}
     >
       <span className="visual-caption visual-caption-top">{questions.length} QUESTÕES NO BANCO</span>
-      <svg className="network-globe" viewBox="0 0 320 300" role="img" aria-label="Rede de pontos coloridos representando as matérias">
-        <defs><clipPath id="globe-clip"><circle cx="160" cy="150" r="126" /></clipPath></defs>
+      <svg ref={globeRef} className="network-globe" viewBox="0 0 320 300" role="img" aria-label="Esfera tridimensional giratória com pontos e conexões das matérias">
+        <defs>
+          <clipPath id="globe-clip"><circle cx="160" cy="150" r="126" /></clipPath>
+          <radialGradient id="globe-shading" cx="36%" cy="30%" r="78%">
+            <stop offset="0%" stopColor="#445174" stopOpacity=".23" />
+            <stop offset="72%" stopColor="#17202e" stopOpacity=".14" />
+            <stop offset="100%" stopColor="#090c12" stopOpacity=".58" />
+          </radialGradient>
+        </defs>
         <circle cx="160" cy="150" r="126" className="globe-outline" />
         <g clipPath="url(#globe-clip)">
-          <g className="globe-network">
-            <g className="globe-lines">
-              {networkPoints.map((point, index) => {
-                const next = networkPoints[(index + 7) % networkPoints.length];
-                const alternate = networkPoints[(index + 15) % networkPoints.length];
-                return <g key={index}><line x1={point.x} y1={point.y} x2={next.x} y2={next.y} /><line x1={point.x} y1={point.y} x2={alternate.x} y2={alternate.y} /></g>;
-              })}
-              {networkPoints.map((point, index) => <circle key={`node-${index}`} cx={point.x} cy={point.y} r={index % 5 === 0 ? 2.6 : 1.7} className={`globe-dot tone-${index % 3}`} />)}
-            </g>
+          <g className="globe-lines">
+            {networkEdges.map(([startIndex, endIndex], index) => {
+              const start = initialNodes[startIndex];
+              const end = initialNodes[endIndex];
+              return <line key={`edge-${index}`} className="globe-edge" x1={start.x} y1={start.y} x2={end.x} y2={end.y} opacity="0.22" />;
+            })}
+          </g>
+          <g className="globe-nodes">
+            {initialNodes.map((point, index) => <circle key={`node-${index}`} cx={point.x} cy={point.y} r={index % 5 === 0 ? 2.6 : 1.7} opacity={0.22 + ((point.depth + 1) / 2) * 0.78} className={`globe-dot tone-${index % 3}`} />)}
           </g>
         </g>
         <path d="M25 190 C95 160 225 170 295 125" className="globe-orbit" />
