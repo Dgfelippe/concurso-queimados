@@ -124,7 +124,7 @@ function QuestionGlobe() {
 /* =========================================================================
    PÁGINA 1: PAINEL GERAL (DASHBOARD HUMANIZADO)
    ========================================================================= */
-function LandingPage({ attempts, theme, onToggleTheme, account, cloudStatus, onSignIn, onSignOut }: { attempts: Attempt[]; theme: 'dark' | 'light'; onToggleTheme: () => void; account: User | null; cloudStatus: 'local' | 'syncing' | 'synced' | 'offline'; onSignIn: () => void; onSignOut: () => void }) {
+function LandingPage({ attempts, theme, onToggleTheme, account, onSignOut }: { attempts: Attempt[]; theme: 'dark' | 'light'; onToggleTheme: () => void; account: User | null; onSignOut: () => void }) {
   const correct = attempts.filter((a) => a.correct).length;
   const accuracy = attempts.length ? Math.round((correct / attempts.length) * 100) : null;
   const targetDate = new Date(`${contest.examDate}T14:00:00`).getTime();
@@ -137,9 +137,8 @@ function LandingPage({ attempts, theme, onToggleTheme, account, cloudStatus, onS
       <header className="landing-header">
         <NavLink className="landing-brand" to="/" aria-label="Queimados Agente, início"><span className="landing-brand-mark">Q</span><span><b>Queimados</b><small>· Agente</small></span></NavLink>
         <div className="landing-header-actions">
-          <CloudAccountControl account={account} status={cloudStatus} onSignIn={onSignIn} onSignOut={onSignOut} />
           <button className="theme-toggle" type="button" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'} onClick={onToggleTheme}><span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span></button>
-          <NavLink className="landing-signin" to="/questoes">Entrar</NavLink>
+          <button className="landing-signin" type="button" onClick={onSignOut}>Sair</button>
         </div>
       </header>
 
@@ -181,6 +180,73 @@ function LandingPage({ attempts, theme, onToggleTheme, account, cloudStatus, onS
       <footer className="landing-footer"><span>Feito para quem estuda para Queimados/RJ e sabe que cada ponto conta.</span><span>Preparatório independente, sem vínculo com a Prefeitura ou a banca.</span></footer>
     </div>
   );
+}
+
+function EntryPage({
+  theme,
+  onToggleTheme,
+  onSignIn,
+  status,
+  configured
+}: {
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
+  onSignIn: () => void;
+  status: 'local' | 'syncing' | 'synced' | 'offline';
+  configured: boolean;
+}) {
+  const targetDate = new Date(`${contest.examDate}T14:00:00`).getTime();
+  const days = Math.max(0, Math.ceil((targetDate - Date.now()) / (1000 * 60 * 60 * 24)));
+  const busy = status === 'syncing';
+
+  return (
+    <main className="entry-page" data-theme={theme}>
+      <div className="entry-wrap">
+        <header className="landing-header entry-header">
+          <NavLink className="landing-brand" to="/" aria-label="Queimados Agente, início"><span className="landing-brand-mark">Q</span><span><b>Queimados</b><small>· Agente</small></span></NavLink>
+          <div className="landing-header-actions">
+            <button className="theme-toggle" type="button" aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'} onClick={onToggleTheme}><span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span></button>
+            <button className="landing-signin" type="button" onClick={onSignIn} disabled={!configured || busy}>Entrar</button>
+          </div>
+        </header>
+
+        <section className="entry-hero">
+          <div className="entry-copy">
+            <div className="exam-date-pill"><span className="status-dot" /> Prova prevista para {prettyDate(contest.examDate)} · faltam <b>{days}</b> dias</div>
+            <span className="eyebrow entry-eyebrow">PREPARATÓRIO · AGENTE ADMINISTRATIVO</span>
+            <h1>Seu próximo passo começa com <span>foco.</span></h1>
+            <p>Entre com sua conta Google para abrir as questões, simulados, revisões e acompanhar seu progresso de onde estiver.</p>
+            <button className="entry-google-button" type="button" onClick={onSignIn} disabled={!configured || busy}>
+              <span className="google-mark" aria-hidden="true">G</span>
+              <span>{busy ? 'Conectando com o Google…' : 'Entrar com Google'}</span>
+              {!busy && <span className="entry-arrow" aria-hidden="true">→</span>}
+            </button>
+            <div className="entry-assurance"><span aria-hidden="true">⌁</span><span>Seu histórico fica na sua conta e acompanha você no celular e no computador.</span></div>
+            {!configured && <p className="entry-alert" role="alert">O acesso seguro ainda não foi configurado neste ambiente. Abra o site publicado para entrar.</p>}
+            {configured && status === 'offline' && <p className="entry-alert" role="alert">Não foi possível concluir o acesso. Verifique sua conexão e tente novamente.</p>}
+          </div>
+          <div className="entry-visual-wrap">
+            <div className="entry-visual-card">
+              <div className="entry-visual-heading"><span className="status-dot" /> SUA PREPARAÇÃO, NO SEU RITMO</div>
+              <QuestionGlobe />
+              <div className="entry-visual-footer"><span>Questões comentadas</span><i /><span>Progresso sincronizado</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section className="entry-benefits" aria-label="O que você encontra após entrar">
+          <article><span>01</span><strong>Pratique</strong><small>Questões por matéria e simulados.</small></article>
+          <article><span>02</span><strong>Entenda</strong><small>Revisões guiadas para aprender com os erros.</small></article>
+          <article><span>03</span><strong>Acompanhe</strong><small>Seu histórico e desempenho sincronizados.</small></article>
+        </section>
+        <footer className="entry-footer"><span>Preparatório independente para Queimados/RJ.</span><span>Acesso gratuito com sua conta Google.</span></footer>
+      </div>
+    </main>
+  );
+}
+
+function EntryLoading({ theme }: { theme: 'dark' | 'light' }) {
+  return <main className="entry-loading" data-theme={theme} role="status"><span className="entry-loading-mark">Q</span><strong>Preparando seu espaço de estudo</strong><small>Estamos carregando sua conta e seu histórico.</small><span className="entry-loading-bar" /></main>;
 }
 
 /* =========================================================================
@@ -1155,19 +1221,18 @@ function Progress({ attempts, simulations, account }: { attempts: Attempt[]; sim
 function CloudAccountControl({
   account,
   status,
-  onSignIn,
   onSignOut
 }: {
   account: User | null;
   status: 'local' | 'syncing' | 'synced' | 'offline';
-  onSignIn: () => void;
   onSignOut: () => void;
 }) {
-  if (!firebaseConfigured) return null;
+  if (!firebaseConfigured || !account) return null;
   const statusText = status === 'syncing' ? 'Sincronizando seu histórico…' : status === 'synced' ? 'Histórico sincronizado' : status === 'offline' ? 'Sem conexão com a nuvem; seus dados seguem salvos neste aparelho.' : 'Entre para manter seu histórico em outros aparelhos.';
   return (
     <div className="cloud-account-control">
-      {account ? <><span className="cloud-account-name">{account.displayName || 'Conta Google'}</span><button className="cloud-account-button" type="button" onClick={onSignOut}>Sair</button></> : <button className="cloud-account-button" type="button" onClick={onSignIn}>Salvar na nuvem com Google</button>}
+      <span className="cloud-account-name">{account.displayName || 'Conta Google'}</span>
+      <button className="cloud-account-button" type="button" onClick={onSignOut}>Sair</button>
       <small className="cloud-sync-status" role="status">{statusText}</small>
     </div>
   );
@@ -1317,10 +1382,19 @@ function AppContent() {
   };
 
   const handleSignIn = () => {
+    if (!firebaseConfigured) return;
     setCloudStatus('syncing');
     void signInWithGoogle().catch(() => setCloudStatus('offline'));
   };
   const handleSignOut = () => void signOutOfGoogle();
+
+  if (!firebaseConfigured) {
+    return <EntryPage theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} onSignIn={handleSignIn} status={cloudStatus} configured={false} />;
+  }
+  if (!authReady || (account && !cloudReady)) return <EntryLoading theme={theme} />;
+  if (!account) {
+    return <EntryPage theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} onSignIn={handleSignIn} status={cloudStatus} configured />;
+  }
 
   return (
     <div className={`app-shell${isLanding ? ' landing-shell' : ''}`} data-testid="app-shell" data-theme={theme}>
@@ -1360,7 +1434,7 @@ function AppContent() {
             <span className="topbar-title">Preparatório — Agente Administrativo</span>
           </div>
           <div className="topbar-actions">
-            <CloudAccountControl account={account} status={cloudStatus} onSignIn={handleSignIn} onSignOut={handleSignOut} />
+            <CloudAccountControl account={account} status={cloudStatus} onSignOut={handleSignOut} />
             <div className="topbar-date">
               <span className="status-dot" /> Prova em <b>{prettyDate(contest.examDate)} (Tarde)</b>
             </div>
@@ -1373,7 +1447,7 @@ function AppContent() {
 
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<LandingPage attempts={attempts} theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} account={account} cloudStatus={cloudStatus} onSignIn={handleSignIn} onSignOut={handleSignOut} />} />
+            <Route path="/" element={<LandingPage attempts={attempts} theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} account={account} onSignOut={handleSignOut} />} />
             <Route path="/edital" element={<EditalGuidePage />} />
             <Route path="/questoes" element={<Practice onAnswer={record} />} />
             <Route path="/simulados" element={<ExamSimulator onAnswer={record} onSimulation={recordSimulation} />} />
