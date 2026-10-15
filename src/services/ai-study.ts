@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Question } from '../domain/types';
 import { getTopic } from '../data/topics';
 import { firebaseAiConfigured, firebaseApp } from './firebase';
+import { InvalidAiJsonError, parseAiJson } from './ai-json';
 
 const optionIds = ['A', 'B', 'C', 'D'] as const;
 const questionSchema = z.object({
@@ -65,12 +66,7 @@ function getModel(options: { systemInstruction?: string; structuredOutput?: bool
 }
 
 function responseJson<T>(text: string, validator: z.ZodType<T>): T {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error('A resposta da IA veio em um formato inválido. Tente novamente.');
-  }
+  const parsed = parseAiJson(text);
   const result = validator.safeParse(parsed);
   if (!result.success) throw new Error('A IA não conseguiu montar uma questão completa agora. Tente novamente.');
   return result.data;
@@ -115,8 +111,16 @@ Matéria: ${topic.discipline}
 Dificuldade solicitada: ${input.difficulty}. Fácil = aplicação direta; média = interpretação/aplicação com um passo de raciocínio; difícil = distinção conceitual ou caso com mais de uma etapa, sem ambiguidade.
 Exemplos de estilo, para referência e não para copiar: ${JSON.stringify(examples)}
 Produza alternativas plausíveis e apenas uma correta. Antes de responder, resolva cada item sem olhar o gabarito proposto, confira se exatamente uma alternativa é defensável pelo enunciado e pelo resumo e confirme que a explicação sustenta a mesma letra. Explique a correta e o defeito específico de cada distrator no campo note. Responda apenas o JSON conforme o esquema.`;
-  const result = await getModel({ structuredOutput: true }).generateContent(prompt);
-  const generated = responseJson(result.response.text(), generationSchema).questions;
+  const model = getModel({ structuredOutput: true });
+  let generated: GeneratedQuestion[];
+  try {
+    const result = await model.generateContent(prompt);
+    generated = responseJson(result.response.text(), generationSchema).questions;
+  } catch (cause) {
+    if (!(cause instanceof InvalidAiJsonError)) throw cause;
+    const retry = await model.generateContent(`${prompt}\n\nREFAÇA A RESPOSTA: entregue somente um objeto JSON completo no formato solicitado, sem introdução, sem bloco Markdown e sem texto depois do objeto.`);
+    generated = responseJson(retry.response.text(), generationSchema).questions;
+  }
   if (generated.some((item) => item.topicId !== topic.id || item.discipline !== topic.discipline)) {
     throw new Error('A IA trouxe uma questão fora do tópico selecionado. Gere novamente.');
   }
