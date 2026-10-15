@@ -163,11 +163,14 @@ describe('navegação principal', () => {
   }, 30000);
 
   it('opens the AI study page and clearly reports missing cloud configuration', async () => {
+    const user = userEvent.setup();
     await renderApp(['/estudo-ia']);
     expect(screen.getByRole('heading', { name: 'Questões inéditas por tópico' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Gerar 3 questões' })).toBeDisabled();
-    expect(screen.getByText(/falta ativar Firebase AI Logic e App Check/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'IA indisponível no momento' })).toBeDisabled();
     expect(screen.getByRole('tab', { name: 'Questões reais e fontes' })).toBeInTheDocument();
+    expect(screen.getByText('Privacidade e limites do recurso')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Questões reais e fontes' }));
+    expect(screen.queryByText(/As questões reais mostram banca, concurso e link da prova/)).not.toBeInTheDocument();
   });
 
   it('keeps an old wrong answer in the error tutor after a later correct answer', async () => {
@@ -241,8 +244,7 @@ describe('navegação principal', () => {
     expect(disciplineRules.portuguese.questionCount + disciplineRules.municipal_law.questionCount + disciplineRules.specific_knowledge.questionCount).toBe(30);
     await renderApp(['/simulados']);
     expect(screen.getByText(/50\+ pontos e NÃO PODE ZERAR nenhuma matéria/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Iniciar simulado completo com IA' })).toBeDisabled();
-    expect(screen.getByRole('link', { name: /Abrir o guia de configuração/ })).toHaveAttribute('href', expect.stringContaining('docs/IA-QUESTOES.md'));
+    expect(screen.getByRole('button', { name: 'Simulado com IA indisponível' })).toBeDisabled();
   });
 
   it('requires Google entry before showing protected study content', async () => {

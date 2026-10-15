@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { questions } from '../data/questions';
 import { getRealContestQuestions } from '../data/questions';
 import { syllabusTopics } from '../data/topics';
@@ -91,14 +90,14 @@ export function AIQuestionStudio({ onAnswer }: {
 
       <section className="panel ai-study-panel">
         <div className="ai-study-tabs" role="tablist" aria-label="Tipo de questão">
-          <button type="button" role="tab" aria-selected={mode === 'generated'} className={mode === 'generated' ? 'active' : ''} onClick={() => { setMode('generated'); setSet([]); setError(''); }}>Inéditas da IA</button>
+          <button type="button" role="tab" aria-selected={mode === 'generated'} className={mode === 'generated' ? 'active' : ''} onClick={() => { setMode('generated'); setSet([]); setError(''); }}>Novas questões</button>
           <button type="button" role="tab" aria-selected={mode === 'real'} className={mode === 'real' ? 'active' : ''} onClick={openRealQuestions}>Questões reais e fontes</button>
         </div>
         {mode === 'generated' ? <>
-        <div className="ai-study-disclosure">
-          <strong>Como este recurso funciona</strong>
-          <p>Quando você pedir um novo bloco, o tópico do edital, o resumo do conteúdo e exemplos de treino serão enviados ao Google Gemini. Ao pedir explicação de um erro, também serão enviados o enunciado e a alternativa que você marcou. Seu nome e e-mail não são enviados. O nível gratuito tem cotas e pode ficar temporariamente indisponível; esta integração não ativa faturamento nem pesquisa a web ao vivo. No nível gratuito, o Google informa que pode usar o conteúdo das solicitações para melhorar os produtos. As questões da IA não são provas oficiais; confira legislação e fontes do edital.</p>
-        </div>
+        <details className="ai-study-disclosure">
+          <summary>Privacidade e limites do recurso</summary>
+          <p>Para criar questões ou explicar um erro, o enunciado, sua resposta e o tópico estudado são enviados ao Google Gemini. Seu nome e e-mail não são enviados. As questões são material de treino, não questões oficiais. O uso gratuito tem limites e o Google pode usar solicitações para melhorar os produtos.</p>
+        </details>
         <div className="ai-study-controls">
           <label>Tópico do edital
             <select value={topicId} onChange={(event) => { setTopicId(event.target.value); setSet([]); }}>
@@ -111,16 +110,11 @@ export function AIQuestionStudio({ onAnswer }: {
             </select>
           </label>
           <button className="button button-primary" type="button" onClick={generate} disabled={busy || !firebaseAiConfigured || !topicId}>
-            {busy ? 'Montando questões…' : set.length ? 'Gerar outro bloco' : 'Gerar 3 questões'}
+            {busy ? 'Montando questões…' : !firebaseAiConfigured ? 'IA indisponível no momento' : set.length ? 'Gerar outro bloco' : 'Gerar 3 questões'}
           </button>
         </div>
 
-        {!firebaseAiConfigured && <p className="ai-setup-note" role="status">O recurso está pronto no site, mas falta ativar Firebase AI Logic e App Check no projeto e cadastrar a chave pública do reCAPTCHA v3. Consulte <Link to="/fontes">Fontes Oficiais</Link> e <a href="https://github.com/Dgfelippe/concurso-queimados/blob/main/docs/IA-QUESTOES.md" target="_blank" rel="noreferrer">abra o guia de configuração ↗</a>.</p>}
         </> : <section className="real-question-library" aria-label="Questões reais de provas anteriores">
-          <div className="ai-study-disclosure">
-            <strong>Questões reais: procedência conferida</strong>
-            <p>Esta área só apresenta como questão de concurso aquilo que já tem prova anterior identificada e fonte consultável. A IA não inventa questões e as rotula como reais. O acervo local validado ainda é pequeno: filtre o tópico abaixo e abra as provas completas nas fontes. Bancos externos podem exigir cadastro ou limitar o uso gratuito.</p>
-          </div>
           <label className="real-topic-filter">Filtrar por tópico do edital
             <select value={topicId} onChange={(event) => { setTopicId(event.target.value); setSet(getRealContestQuestions().filter((item) => item.topicId === event.target.value)); setIndex(0); setSelected(''); setAnswered(false); }}>
               {syllabusTopics.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}

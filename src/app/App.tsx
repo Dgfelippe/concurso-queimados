@@ -997,14 +997,13 @@ function ExamSimulator({
 
           {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
           <div className="simulator-start-actions">
-          <button className="button button-primary" aria-label="Iniciar simulado completo com IA" onClick={() => void begin(true)} disabled={preparing || !firebaseAiConfigured}>
-            {preparing ? 'Gerando questões e montando prova…' : 'Gerar simulado com IA →'}
+          <button className="button button-primary" aria-label={firebaseAiConfigured ? 'Iniciar simulado completo com IA' : 'Simulado com IA indisponível'} onClick={() => void begin(true)} disabled={preparing || !firebaseAiConfigured}>
+            {preparing ? 'Gerando questões e montando prova…' : firebaseAiConfigured ? 'Gerar simulado com IA →' : 'Simulado com IA indisponível'}
           </button>
           <button className="button button-secondary" onClick={() => void begin(false)} disabled={preparing}>
             Iniciar com banco local
           </button>
           </div>
-          {!firebaseAiConfigured && <p className="ai-setup-note" role="status">A IA ainda não está ativada neste site. A configuração gratuita do Firebase AI Logic, App Check e reCAPTCHA precisa ser concluída primeiro. <a href="https://github.com/Dgfelippe/concurso-queimados/blob/main/docs/IA-QUESTOES.md" target="_blank" rel="noreferrer">Abrir o guia de configuração ↗</a>. Enquanto isso, você pode iniciar pelo banco local.</p>}
         </section>
       </>
     );
