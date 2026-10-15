@@ -1753,11 +1753,11 @@ function AppContent() {
                       {syllabusTopics
                         .filter((t) => t.discipline === discipline)
                         .map((t) => (
-                          <details key={t.id} style={{ padding: '12px 0', borderTop: '1px solid #e1ebe6' }}>
-                            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#163330' }}>
+                          <details className="syllabus-topic" key={t.id}>
+                            <summary>
                               {t.title}
                             </summary>
-                            <p style={{ margin: '8px 0', color: '#526b64', fontSize: '13.5px' }}>{t.summary}</p>
+                            <p className="syllabus-topic-summary">{t.summary}</p>
                             <button className="text-button" onClick={() => navigate('/questoes')}>
                               Praticar questões deste tema →
                             </button>
