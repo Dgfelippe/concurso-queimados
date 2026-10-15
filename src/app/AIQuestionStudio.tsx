@@ -115,7 +115,7 @@ export function AIQuestionStudio({ onAnswer }: {
           </button>
         </div>
 
-        {!firebaseAiConfigured && <p className="ai-setup-note" role="status">O recurso está pronto no site, mas falta ativar Firebase AI Logic e App Check no projeto e cadastrar a chave pública do reCAPTCHA v3. Consulte <Link to="/fontes">Fontes Oficiais</Link> ou siga o guia de configuração que acompanhou esta alteração.</p>}
+        {!firebaseAiConfigured && <p className="ai-setup-note" role="status">O recurso está pronto no site, mas falta ativar Firebase AI Logic e App Check no projeto e cadastrar a chave pública do reCAPTCHA v3. Consulte <Link to="/fontes">Fontes Oficiais</Link> e <a href="https://github.com/Dgfelippe/concurso-queimados/blob/main/docs/IA-QUESTOES.md" target="_blank" rel="noreferrer">abra o guia de configuração ↗</a>.</p>}
         </> : <section className="real-question-library" aria-label="Questões reais de provas anteriores">
           <div className="ai-study-disclosure">
             <strong>Questões reais: procedência conferida</strong>

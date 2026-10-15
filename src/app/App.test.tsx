@@ -241,6 +241,8 @@ describe('navegação principal', () => {
     expect(disciplineRules.portuguese.questionCount + disciplineRules.municipal_law.questionCount + disciplineRules.specific_knowledge.questionCount).toBe(30);
     await renderApp(['/simulados']);
     expect(screen.getByText(/50\+ pontos e NÃO PODE ZERAR nenhuma matéria/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Iniciar simulado completo com IA' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: /Abrir o guia de configuração/ })).toHaveAttribute('href', expect.stringContaining('docs/IA-QUESTOES.md'));
   });
 
   it('requires Google entry before showing protected study content', async () => {
