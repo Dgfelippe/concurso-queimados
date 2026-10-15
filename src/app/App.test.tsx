@@ -88,7 +88,7 @@ describe('navegação principal', () => {
   it('pauses_the_simulation_with_a_visible_resume_state', async () => {
     const user = userEvent.setup();
     await renderApp(['/simulados']);
-    await user.click(screen.getByRole('button', { name: /Iniciar simulado completo/i }));
+    await user.click(screen.getByRole('button', { name: /Iniciar com banco local/i }));
     await user.click(screen.getByRole('button', { name: /Pausar/i }));
     expect(screen.getByText('SIMULADO PAUSADO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retomar prova' })).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('navegação principal', () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await renderApp(['/simulados']);
-    await user.click(screen.getByRole('button', { name: /Iniciar simulado completo/i }));
+    await user.click(screen.getByRole('button', { name: /Iniciar com banco local/i }));
     const firstOptionList = document.querySelector('.option-list');
     const firstOption = firstOptionList?.querySelector('button');
     expect(firstOption).toBeTruthy();
@@ -171,7 +171,7 @@ describe('navegação principal', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar Resposta' }));
     const firstAttempt = JSON.parse(localStorage.getItem('rq-attempts:test-user') || '[]')[0];
     await user.click(screen.getByRole('link', { name: 'Caderno de erros' }));
-    expect(screen.getByRole('heading', { name: 'Aula da questão' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Aula da questão' })).toBeInTheDocument();
     const correctText = question.options.find((option) => option.id === question.correctOption)!.text;
     const retryArea = within(document.querySelector('.review-retry-section')!);
 

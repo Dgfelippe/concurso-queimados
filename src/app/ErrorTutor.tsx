@@ -4,7 +4,8 @@ import { contest, disciplineRules } from '../data/edital';
 import { questions, type QuestionData } from '../data/questions';
 import { getTopic } from '../data/topics';
 import { deriveReviewQueue } from '../domain/review-state';
-import type { Attempt, Discipline, ErrorReason, OptionId } from '../domain/types';
+import type { Attempt, Discipline, ErrorReason, OptionId, Question } from '../domain/types';
+import { explainMistake } from '../services/ai-study';
 
 const disciplineLabels: Record<Discipline, string> = {
   portuguese: 'Língua Portuguesa',
@@ -35,7 +36,8 @@ interface ErrorTutorProps {
     correct: boolean,
     reason?: ErrorReason,
     confidence?: Attempt['confidence'],
-    sessionId?: string
+    sessionId?: string,
+    questionSnapshot?: Question
   ) => void;
 }
 
@@ -44,10 +46,16 @@ export function ErrorTutor({ attempts, onAnswer }: ErrorTutorProps) {
   const [choice, setChoice] = useState<OptionId | ''>('');
   const [reason, setReason] = useState<ErrorReason>('unknown_content');
   const [result, setResult] = useState<boolean | null>(null);
+  const [aiExplanation, setAiExplanation] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
   const [sessionId] = useState(() => crypto.randomUUID());
 
   const queue = useMemo(() => {
     const byId = new Map(questions.map((question) => [question.id, question]));
+    attempts.forEach((attempt) => {
+      if (attempt.questionSnapshot) byId.set(attempt.questionId, attempt.questionSnapshot);
+    });
     const statusOrder = { pending: 0, reviewing: 1, mastered: 2 };
     return deriveReviewQueue(attempts)
       .map((item) => ({ item, question: byId.get(item.questionId) }))
@@ -83,12 +91,35 @@ export function ErrorTutor({ attempts, onAnswer }: ErrorTutorProps) {
     setChoice('');
     setReason('unknown_content');
     setResult(null);
+    setAiExplanation('');
+    setAiError('');
+  };
+
+  const requestAiLesson = async () => {
+    if (!question || !lastWrong) return;
+    setAiBusy(true);
+    setAiError('');
+    try {
+      setAiExplanation(await explainMistake({
+        question,
+        selectedOption: lastWrong.selectedOption,
+        errorReason: lastWrong.errorReason ? reasonLabels[lastWrong.errorReason] : undefined
+      }));
+    } catch (cause) {
+      setAiError(cause instanceof Error ? cause.message : 'Não foi possível obter a explicação agora.');
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const submit = () => {
     if (!question || !choice) return;
     const correct = choice === question.correctOption;
-    onAnswer(question.id, choice, correct, correct ? undefined : reason, 'sure', sessionId);
+    if (question.id.startsWith('ai-')) {
+      onAnswer(question.id, choice, correct, correct ? undefined : reason, 'sure', sessionId, question);
+    } else {
+      onAnswer(question.id, choice, correct, correct ? undefined : reason, 'sure', sessionId);
+    }
     setResult(correct);
   };
 
@@ -162,6 +193,17 @@ export function ErrorTutor({ attempts, onAnswer }: ErrorTutorProps) {
               <section className="review-teaching-section">
                 <h3>2. Raciocínio para chegar ao gabarito</h3>
                 <p>{question.explanation}</p>
+              </section>
+
+              <section className="review-teaching-section ai-error-tutor">
+                <h3>Quer outra explicação?</h3>
+                <p>O tutor pode explicar de outro jeito e partir da alternativa que você marcou. Ele usa somente o enunciado e os dados desta questão.</p>
+                <button className="button button-secondary" type="button" onClick={requestAiLesson} disabled={aiBusy}>
+                  {aiBusy ? 'Preparando a explicação…' : aiExplanation ? 'Gerar outra explicação' : 'Pedir explicação ao tutor IA'}
+                </button>
+                <small>Ao clicar, o conteúdo desta questão e a sua resposta são enviados ao Google Gemini. Seu nome e e-mail não são enviados. No nível gratuito, o Google informa que pode usar o conteúdo das solicitações para melhorar os produtos.</small>
+                {aiError && <p className="ai-error-message" role="alert">{aiError}</p>}
+                {aiExplanation && <div className="ai-explanation-output" aria-live="polite">{aiExplanation}</div>}
               </section>
 
               <section className="review-teaching-section">

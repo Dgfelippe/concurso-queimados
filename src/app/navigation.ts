@@ -8,7 +8,8 @@ export const navigationItems = [
   { path: '/conteudos', label: 'Conteúdos', shortLabel: 'Ementa', icon: '▧' },
   { path: '/plano', label: 'Plano de estudo', shortLabel: 'Plano', icon: '▤' },
   { path: '/progresso', label: 'Progresso', shortLabel: 'Estatísticas', icon: '▥' },
-  { path: '/fontes', label: 'Fontes Oficiais', shortLabel: 'Fontes', icon: '⌕' }
+  { path: '/fontes', label: 'Fontes Oficiais', shortLabel: 'Fontes', icon: '⌕' },
+  { path: '/estudo-ia', label: 'Estudo com IA', shortLabel: 'Tutor IA', icon: '✦' }
 ] as const;
 
 export type AppPath = (typeof navigationItems)[number]['path'];

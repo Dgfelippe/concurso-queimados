@@ -2090,3 +2090,46 @@ progress::-webkit-progress-value {
   .landing-shell .feature-card:hover,
   .landing-shell .exam-score-panel:hover { transform: none; }
 }
+
+.ai-study-panel { display: grid; gap: 20px; }
+.ai-study-disclosure { border: 1px solid color-mix(in srgb, var(--work-mint) 26%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--work-mint) 7%, var(--work-surface, var(--paper))); padding: 16px 18px; }
+.ai-study-disclosure strong { color: var(--ink); }
+.ai-study-disclosure p { margin: 7px 0 0; line-height: 1.65; }
+.ai-study-controls { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(160px, .7fr) auto; align-items: end; gap: 14px; }
+.ai-study-controls label,.review-reason-select { display: grid; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 650; }
+.ai-study-controls select,.review-reason-select select,.real-topic-filter select { min-height: 42px; width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--work-surface, var(--paper)); color: var(--ink); padding: 0 12px; }
+.ai-setup-note,.ai-error-message { border-radius: 10px; padding: 12px 14px; line-height: 1.55; }
+.ai-setup-note { background: rgba(241,179,75,.1); border: 1px solid rgba(241,179,75,.28); }
+.ai-setup-note a { color: var(--work-mint); font-weight: 700; }
+.ai-error-message { background: rgba(218,92,92,.1); border: 1px solid rgba(218,92,92,.3); }
+.ai-question-card { display: grid; gap: 16px; border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--work-surface, var(--paper)); }
+.ai-question-card h2 { margin: 0; font-size: 19px; line-height: 1.5; }
+.ai-question-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
+.ai-question-meta span { border: 1px solid var(--line); border-radius: 999px; padding: 5px 9px; }
+.ai-question-explanation { border-left: 3px solid var(--work-mint); padding: 4px 0 4px 14px; line-height: 1.65; }
+.ai-question-explanation p { margin: 8px 0; }
+.ai-question-explanation small,.ai-source-warning,.ai-question-count { color: var(--muted); }
+.ai-source-warning { font-size: 12px; }
+.ai-explanation-output { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 12px; background: var(--work-surface, var(--paper)); color: var(--ink); padding: 16px; line-height: 1.7; }
+.ai-error-tutor { display: grid; gap: 10px; }
+.ai-error-tutor small { color: var(--muted); line-height: 1.55; }
+.ai-study-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.ai-study-tabs button { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+.ai-study-tabs button.active { background: color-mix(in srgb, var(--work-mint) 15%, transparent); border-color: var(--work-mint); color: var(--ink); }
+.real-question-library { display: grid; gap: 16px; }
+.real-topic-filter { display: grid; gap: 7px; max-width: 520px; color: var(--ink); font-size: 13px; font-weight: 650; }
+.real-question-count,.real-question-origin { margin: 0; color: var(--muted); line-height: 1.55; }
+.real-question-origin a { color: var(--work-mint); }
+.real-source-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.real-source-card { display: grid; align-content: start; gap: 10px; padding: 16px; }
+.real-source-card h3,.real-source-card p { margin: 0; }
+.real-source-card p { color: var(--muted); font-size: 13px; line-height: 1.55; }
+.simulator-start-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.exam-provenance { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.exam-provenance a { color: var(--work-mint); font-weight: 700; }
+.exam-provenance.is-real { border-left: 3px solid var(--work-mint); padding-left: 10px; }
+.exam-provenance.is-original { border-left: 3px solid var(--line); padding-left: 10px; }
+@media (max-width: 720px) {
+  .ai-study-controls { grid-template-columns: 1fr; }
+  .ai-question-card { padding: 16px; }
+}

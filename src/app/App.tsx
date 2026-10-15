@@ -6,7 +6,7 @@ import { syllabusTopics } from '../data/topics';
 import { contest, disciplineRules, scheduleTimeline } from '../data/edital';
 import { sourceLinks } from '../data/sources';
 import { dossieQueimados } from '../data/queimados-dossie';
-import type { Attempt, Discipline, ErrorReason, OptionId } from '../domain/types';
+import type { Attempt, Discipline, ErrorReason, OptionId, Question } from '../domain/types';
 import type { SimulationSession } from '../domain/types';
 import {
   firebaseConfigured,
@@ -21,6 +21,9 @@ import {
   type User
 } from '../services/firebase';
 import { ErrorTutor } from './ErrorTutor';
+import { AIQuestionStudio } from './AIQuestionStudio';
+import { generateTopicQuestions } from '../services/ai-study';
+import { firebaseAiConfigured } from '../services/firebase';
 import '../styles/global.css';
 
 const labels: Record<Discipline, string> = {
@@ -473,7 +476,7 @@ function Practice({
   allowedIds,
   simulation = false
 }: {
-  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string) => void;
+  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string, questionSnapshot?: Question) => void;
   allowedIds?: string[];
   simulation?: boolean;
 }) {
@@ -733,10 +736,12 @@ function ExamSimulator({
   onAnswer,
   onSimulation
 }: {
-  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string) => void;
+  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string, questionSnapshot?: Question) => void;
   onSimulation: (session: SimulationSession) => void;
 }) {
   const [items, setItems] = useState<typeof questions>([]);
+  const [preparing, setPreparing] = useState(false);
+  const [simulatorError, setSimulatorError] = useState('');
   const [answers, setAnswers] = useState<Record<string, OptionId>>({});
   const [index, setIndex] = useState(0);
   const [seconds, setSeconds] = useState(contest.durationMinutes * 60);
@@ -772,17 +777,47 @@ function ExamSimulator({
     }
   }, [seconds]);
 
-  const begin = () => {
-    // Monta a prova exata: 10 de Português, 5 de Legislação Municipal, 15 de Conhecimentos Específicos
-    const getSample = (d: Discipline, count: number) => {
-      return [...questions.filter((q) => q.discipline === d)].sort(() => Math.random() - 0.5).slice(0, count);
-    };
+  const begin = async (withAi = true) => {
+    setSimulatorError('');
+    setPreparing(true);
+    try {
+      const shuffle = <T,>(values: T[]) => {
+        const shuffled = [...values];
+        for (let cursor = shuffled.length - 1; cursor > 0; cursor--) {
+          const other = Math.floor(Math.random() * (cursor + 1));
+          [shuffled[cursor], shuffled[other]] = [shuffled[other], shuffled[cursor]];
+        }
+        return shuffled;
+      };
+      const generatedByDiscipline: Record<Discipline, Question[]> = { portuguese: [], municipal_law: [], specific_knowledge: [] };
+      if (withAi) {
+        if (!firebaseAiConfigured) throw new Error('A geração em tempo real ainda depende de ativar Firebase AI Logic, App Check e a chave pública do reCAPTCHA no projeto. Você pode iniciar agora pelo banco local.');
+        const selectedTopics = (['portuguese', 'municipal_law', 'specific_knowledge'] as Discipline[]).map((discipline) => {
+          const candidates = syllabusTopics.filter((topic) => topic.discipline === discipline);
+          return candidates[Math.floor(Math.random() * candidates.length)];
+        });
+        const generated = await Promise.all(selectedTopics.map((topic) => generateTopicQuestions({ topicId: topic.id, difficulty: 'medium', examples: questions.filter((question) => question.topicId === topic.id) })));
+        selectedTopics.forEach((topic, index) => { generatedByDiscipline[topic.discipline] = generated[index]; });
+      }
 
-    const simItems = [
-      ...getSample('portuguese', disciplineRules.portuguese.questionCount),
-      ...getSample('municipal_law', disciplineRules.municipal_law.questionCount),
-      ...getSample('specific_knowledge', disciplineRules.specific_knowledge.questionCount)
-    ];
+      // Cada prova combina itens inéditos recém-gerados com itens do banco local.
+      // Questões reais são identificadas e incluídas com a respectiva procedência.
+      const getSample = (discipline: Discipline, count: number) => {
+        const generated = shuffle(generatedByDiscipline[discipline]).slice(0, Math.min(3, count));
+        const remaining = count - generated.length;
+        const historical = discipline === 'specific_knowledge' ? questions.filter((item) => item.discipline === discipline && item.provenance.kind !== 'original') : [];
+        const verified = shuffle(historical).slice(0, 1);
+        const verifiedIds = new Set(verified.map((item) => item.id));
+        const bank = shuffle(questions.filter((item) => item.discipline === discipline && !verifiedIds.has(item.id)));
+        const picked = [...generated, ...verified, ...bank.slice(0, Math.max(0, remaining - verified.length))];
+        return shuffle(picked).slice(0, count);
+      };
+
+      const simItems = [
+        ...getSample('portuguese', disciplineRules.portuguese.questionCount),
+        ...getSample('municipal_law', disciplineRules.municipal_law.questionCount),
+        ...getSample('specific_knowledge', disciplineRules.specific_knowledge.questionCount)
+      ];
 
     setItems(simItems);
     setAnswers({});
@@ -792,6 +827,11 @@ function ExamSimulator({
     setSessionId(crypto.randomUUID());
     setStartedAt(new Date().toISOString());
     setResult(null);
+    } catch (cause) {
+      setSimulatorError(cause instanceof Error ? cause.message : 'Não foi possível preparar o simulado agora.');
+    } finally {
+      setPreparing(false);
+    }
   };
 
   const finish = () => {
@@ -812,7 +852,7 @@ function ExamSimulator({
         by[q.discipline].points += disciplineRules[q.discipline].pointsPerQuestion;
       }
       if (answers[q.id]) {
-        onAnswer(q.id, answers[q.id], isCorrect, isCorrect ? undefined : 'unknown_content', 'sure', sessionId ?? undefined);
+        onAnswer(q.id, answers[q.id], isCorrect, isCorrect ? undefined : 'unknown_content', 'sure', sessionId ?? undefined, q.id.startsWith('ai-') ? q : undefined);
       }
     }
 
@@ -897,7 +937,7 @@ function ExamSimulator({
           </div>
 
           <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="button button-primary" onClick={begin}>
+            <button className="button button-primary" onClick={() => void begin(true)}>
               Refazer Novo Simulado (3 Horas)
             </button>
             <button className="button button-secondary" onClick={() => setResult(null)}>
@@ -921,6 +961,7 @@ function ExamSimulator({
                     <span style={{ color: '#68827b' }}>{labels[simQ.discipline]}</span>
                   </div>
                   <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 600, color: '#172c2b' }}>{simQ.prompt}</p>
+                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Inédita, criada pela IA para este simulado · dificuldade estimada' : simQ.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#465f58', lineHeight: 1.5 }}>
                     <strong>Comentário:</strong> {simQ.explanation}
                   </p>
@@ -936,8 +977,8 @@ function ExamSimulator({
   if (!items.length) {
     return (
       <>
-        <PageTitle kicker="FORMATO OFICIAL DO EDITAL 01/2026" title="Simulador de Prova Completa">
-          30 questões autorais de treino na distribuição e nos pesos previstos no edital, com cronômetro de até 3 horas e critérios de aprovação do certame.
+        <PageTitle kicker="FORMATO DO EDITAL 01/2026 · TREINO DINÂMICO" title="Simulador de Prova Completa">
+          Cada prova mistura questões inéditas recém-geradas pela IA com itens do banco de treino, mantendo a distribuição e os pesos do edital. Questões reais aparecem com banca, concurso, ano e link de origem.
         </PageTitle>
 
         <section className="panel">
@@ -951,12 +992,18 @@ function ExamSimulator({
           </ul>
 
           <div className="pegadinha-alert" style={{ margin: '20px 0' }}>
-            <strong>💡 Dica do Concurseiro:</strong> Reserve os últimos 20 minutos apenas para revisar o cartão-resposta e garantir que nenhuma questão ficou em branco.
+            <strong>Como os itens são escolhidos:</strong> a IA cria novas questões por tópico do edital; o restante vem do banco local embaralhado. O banco local tem poucas questões reais verificadas, então o app informa a procedência e não apresenta treino autoral como prova passada. Reserve os últimos 20 minutos para revisar o cartão-resposta.
           </div>
 
-          <button className="button button-primary" onClick={begin}>
-            Iniciar simulado completo →
+          {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
+          <div className="simulator-start-actions">
+          <button className="button button-primary" aria-label="Iniciar simulado completo com IA" onClick={() => void begin(true)} disabled={preparing}>
+            {preparing ? 'Gerando questões e montando prova…' : 'Gerar simulado com IA →'}
           </button>
+          <button className="button button-secondary" onClick={() => void begin(false)} disabled={preparing}>
+            Iniciar com banco local
+          </button>
+          </div>
         </section>
       </>
     );
@@ -997,6 +1044,9 @@ function ExamSimulator({
           <span className="badge badge-weight">
             Valor: {disciplineRules[q.discipline].pointsPerQuestion.toFixed(1)} pts
           </span>
+        </div>
+        <div className={`exam-provenance ${q.provenance.kind === 'original' ? 'is-original' : 'is-real'}`}>
+          {q.id.startsWith('ai-') ? 'Questão inédita gerada pela IA neste simulado · dificuldade estimada' : q.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
         </div>
 
         <h2>{q.prompt}</h2>
@@ -1131,7 +1181,7 @@ function CadernoErros({
   onAnswer
 }: {
   attempts: Attempt[];
-  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string) => void;
+  onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string, questionSnapshot?: Question) => void;
 }) {
   return <ErrorTutor attempts={attempts} onAnswer={onAnswer} />;
 }
@@ -1475,7 +1525,8 @@ function AppContent() {
     correct: boolean,
     errorReason?: ErrorReason,
     confidence: Attempt['confidence'] = 'sure',
-    sessionId?: string
+    sessionId?: string,
+    questionSnapshot?: Question
   ) => {
     const attempt: Attempt = {
       id: crypto.randomUUID(),
@@ -1486,7 +1537,8 @@ function AppContent() {
       confidence,
       sessionId,
       answeredAt: new Date().toISOString(),
-      elapsedSeconds: 0
+      elapsedSeconds: 0,
+      questionSnapshot
     };
     setAttempts((prev) => [...prev, attempt]);
     if (account) void saveCloudAttempt(account.uid, attempt).then(() => setCloudStatus('synced')).catch(() => setCloudStatus('offline'));
@@ -1564,6 +1616,7 @@ function AppContent() {
             <Route path="/questoes" element={<Practice onAnswer={record} />} />
             <Route path="/simulados" element={<ExamSimulator onAnswer={record} onSimulation={recordSimulation} />} />
             <Route path="/erros" element={<CadernoErros attempts={attempts} onAnswer={record} />} />
+            <Route path="/estudo-ia" element={<AIQuestionStudio onAnswer={record} />} />
             <Route path="/legislacao" element={<DossieQueimadosPage />} />
             <Route
               path="/conteudos"

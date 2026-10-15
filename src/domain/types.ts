@@ -55,6 +55,8 @@ export interface Attempt {
   answeredAt: string;
   elapsedSeconds: number;
   sessionId?: string;
+  /** Retains generated questions so the error tutor can teach them after reload or sync. */
+  questionSnapshot?: Question;
 }
 
 export interface Review {
