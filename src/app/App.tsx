@@ -22,6 +22,7 @@ import {
 } from '../services/firebase';
 import { ErrorTutor } from './ErrorTutor';
 import { AIQuestionStudio } from './AIQuestionStudio';
+import { CoursePage } from './CoursePage';
 import { generateSimulationQuestions } from '../services/ai-study';
 import { getAiUserMessage } from '../services/ai-errors';
 import { selectDistinctPracticeGroups } from '../data/question-bank-expanded';
@@ -1735,12 +1736,13 @@ function AppContent() {
             <Route path="/erros" element={<CadernoErros attempts={attempts} onAnswer={record} />} />
             <Route path="/estudo-ia" element={<AIQuestionStudio onAnswer={record} />} />
             <Route path="/legislacao" element={<DossieQueimadosPage />} />
+            <Route path="/conteudos/:topicId" element={<CoursePage accountUid={account.uid} onAnswer={record} onSync={setCloudStatus} />} />
             <Route
               path="/conteudos"
               element={
                 <>
                   <PageTitle kicker="EDITAL VERTICALIZADO" title="Conteúdos Programáticos Oficiais">
-                    Consulte todo o conteúdo programático do edital de Agente Administrativo e acesse as questões específicas de cada matéria.
+                    Estude cada tópico em uma trilha progressiva. Ao final de cada etapa, faça uma prova de 10 questões; com 8 acertos, você libera o próximo nível.
                   </PageTitle>
                   {Object.entries(labels).map(([discipline, label]) => (
                     <section className="panel syllabus" key={discipline} style={{ marginBottom: '16px' }}>
@@ -1758,8 +1760,8 @@ function AppContent() {
                               {t.title}
                             </summary>
                             <p className="syllabus-topic-summary">{t.summary}</p>
-                            <button className="text-button" onClick={() => navigate('/questoes')}>
-                              Praticar questões deste tema →
+                            <button className="text-button" onClick={() => navigate(`/conteudos/${t.id}`)}>
+                              Aprender do zero ao avançado →
                             </button>
                           </details>
                         ))}

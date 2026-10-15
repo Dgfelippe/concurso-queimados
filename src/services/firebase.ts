@@ -8,7 +8,7 @@ import {
   signOut,
   type User
 } from 'firebase/auth';
-import type { Attempt, SimulationSession } from '../domain/types';
+import type { Attempt, CourseProgress, SimulationSession } from '../domain/types';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -55,6 +55,16 @@ export async function signOutOfGoogle() {
 export async function loadCloudLearning(uid: string) {
   if (!firebaseApp) return { attempts: [] as Attempt[], simulations: [] as SimulationSession[] };
   return (await import('./firebase-learning')).loadCloudLearning(uid);
+}
+
+export async function loadCloudCourseProgress(uid: string) {
+  if (!firebaseApp) return null;
+  return (await import('./firebase-learning')).loadCloudCourseProgress(uid);
+}
+
+export async function saveCloudCourseProgress(uid: string, progress: CourseProgress) {
+  if (!firebaseApp) return;
+  await (await import('./firebase-learning')).saveCloudCourseProgress(uid, progress);
 }
 
 export async function saveCloudAttempt(uid: string, attempt: Attempt) {

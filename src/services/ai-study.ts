@@ -24,6 +24,20 @@ const questionSchema = z.object({
 
 const generationSchema = z.object({ questions: z.array(questionSchema).min(1).max(3) });
 const simulationGenerationSchema = z.object({ questions: z.array(questionSchema).length(9) });
+const courseAssessmentSchema = z.object({ questions: z.array(questionSchema).length(10) }).superRefine((assessment, ctx) => {
+  assessment.questions.forEach((question, questionIndex) => {
+    if (question.explanation.length < 80) ctx.addIssue({ code: 'custom', path: ['questions', questionIndex, 'explanation'], message: 'A resolução precisa ensinar o raciocínio.' });
+    if (new Set(question.options.map((option) => option.text.trim().toLocaleLowerCase('pt-BR'))).size !== 4) {
+      ctx.addIssue({ code: 'custom', path: ['questions', questionIndex, 'options'], message: 'As alternativas precisam ser distintas.' });
+    }
+    question.options.forEach((option, optionIndex) => {
+      if (option.note.length < 24) ctx.addIssue({ code: 'custom', path: ['questions', questionIndex, 'options', optionIndex, 'note'], message: 'A nota precisa justificar a alternativa.' });
+    });
+  });
+  if (new Set(assessment.questions.map((question) => question.prompt.trim().toLocaleLowerCase('pt-BR'))).size !== 10) {
+    ctx.addIssue({ code: 'custom', path: ['questions'], message: 'As dez questões precisam ser diferentes.' });
+  }
+});
 type GeneratedQuestion = z.infer<typeof questionSchema>;
 
 function structuredQuestionSchema(maxQuestions: number) {
@@ -64,7 +78,7 @@ function getModel(options: { systemInstruction?: string; structuredOutput?: bool
     model: 'gemini-3.8-flash',
     systemInstruction: options.systemInstruction,
     generationConfig: options.structuredOutput
-      ? { maxOutputTokens: options.maxQuestions === 9 ? 12000 : 5000, responseMimeType: 'application/json', responseSchema: structuredQuestionSchema(options.maxQuestions ?? 3) }
+      ? { maxOutputTokens: options.maxQuestions && options.maxQuestions >= 9 ? 16000 : 5000, responseMimeType: 'application/json', responseSchema: structuredQuestionSchema(options.maxQuestions ?? 3) }
       : { maxOutputTokens: 5000 }
   });
 }
@@ -72,7 +86,7 @@ function getModel(options: { systemInstruction?: string; structuredOutput?: bool
 function responseJson<T>(text: string, validator: z.ZodType<T>): T {
   const parsed = parseAiJson(text);
   const result = validator.safeParse(parsed);
-  if (!result.success) throw new Error('A IA não conseguiu montar uma questão completa agora. Tente novamente.');
+  if (!result.success) throw new InvalidAiJsonError();
   return result.data;
 }
 
@@ -129,6 +143,54 @@ Produza alternativas plausíveis e apenas uma correta. Antes de responder, resol
     throw new Error('A IA trouxe uma questão fora do tópico selecionado. Gere novamente.');
   }
   return generated.map(sourceQuestion);
+}
+
+export async function generateCourseAssessment(input: {
+  topicId: string;
+  level: 1 | 2 | 3;
+  unit: { title: string; objective: string; lesson: string; example: string; examFocus: string };
+}): Promise<Question[]> {
+  const topic = getTopic(input.topicId);
+  if (!topic) throw new Error('Escolha um tópico que faça parte do edital.');
+  const prompt = `Monte uma avaliação de fixação com exatamente 10 questões de múltipla escolha, em português brasileiro, para o tópico de concurso abaixo. O estudante acabou de estudar somente a aula desta etapa.
+Matéria: ${topic.discipline}
+Tópico: ${topic.title}
+Etapa: ${input.level} de 3 (${input.unit.title})
+Objetivo da aula: ${input.unit.objective}
+Conteúdo ensinado: ${input.unit.lesson}
+Exemplo explicado: ${input.unit.example}
+Foco de prova: ${input.unit.examFocus}
+Recorte do edital: ${topic.summary}
+
+Critérios obrigatórios:
+- As 10 questões devem avaliar o conteúdo efetivamente ensinado acima, com variedade de habilidades e sem repetir o mesmo raciocínio.
+- Use enunciados naturais, situações plausíveis de prova para Agente Administrativo e alternativas A-D equilibradas, plausíveis e sem pistas artificiais.
+- Cada item deve ter exatamente uma resposta defensável. Não use pegadinha ambígua, dupla negativa desnecessária ou afirmação absoluta sem suporte.
+- A etapa 1 cobra reconhecimento e aplicação direta; a etapa 2 cobra comparação e aplicação; a etapa 3 cobra análise de situação, exceções e integração de ideias ensinadas.
+- Explique o raciocínio da correta e diga por que cada uma das outras três alternativas falha, em notas individuais.
+- A explicação não pode acrescentar conteúdo ausente da aula.
+- Em informática, não cobre produto, sistema, versão, comando ou função que o edital não delimita.
+- Em legislação municipal, use apenas os fatos explicitamente contidos na aula. Não crie artigo, prazo, direito, competência ou exceção. Se a aula só ensinar método de leitura, avalie esse método; não invente uma resposta legal.
+- Antes de responder, resolva cada questão sem consultar o gabarito proposto e confirme que gabarito, explicação e notas concordam.
+Responda somente JSON válido conforme o esquema, com exatamente 10 itens e difficulty apropriada para a etapa.`;
+  const model = getModel({ structuredOutput: true, maxQuestions: 10 });
+  let generated: GeneratedQuestion[];
+  try {
+    const result = await withAiQuotaRetry(() => model.generateContent(prompt));
+    generated = responseJson(result.response.text(), courseAssessmentSchema).questions;
+  } catch (cause) {
+    if (!(cause instanceof InvalidAiJsonError)) throw cause;
+    const retry = await withAiQuotaRetry(() => model.generateContent(`${prompt}\n\nREFAÇA: gere dez itens completos e devolva somente o JSON válido exigido pelo esquema, sem Markdown ou texto antes/depois.`));
+    generated = responseJson(retry.response.text(), courseAssessmentSchema).questions;
+  }
+  if (generated.some((item) => item.topicId !== topic.id || item.discipline !== topic.discipline)) {
+    throw new Error('A avaliação trouxe questão fora do tópico estudado. Gere outra avaliação.');
+  }
+  const normalized = generated.map(sourceQuestion);
+  if (new Set(normalized.map((item) => item.prompt.trim().toLocaleLowerCase('pt-BR'))).size !== 10) {
+    throw new Error('A avaliação veio com questões repetidas. Gere outra avaliação.');
+  }
+  return normalized;
 }
 
 export async function generateSimulationQuestions(input: {

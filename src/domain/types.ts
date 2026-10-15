@@ -155,3 +155,36 @@ export interface StudyBackup {
   reviews: Review[];
   simulations: SimulationSession[];
 }
+
+export interface CourseAssessment {
+  id: string;
+  level: 1 | 2 | 3;
+  items: Question[];
+  answers: Record<string, OptionId>;
+  index: number;
+  startedAt: string;
+}
+
+export interface CourseResult {
+  level: 1 | 2 | 3;
+  score: number;
+  passed: boolean;
+  completedAt: string;
+  items: Question[];
+  answers: Record<string, OptionId>;
+}
+
+export interface TopicCourseProgress {
+  currentLevel: 1 | 2 | 3 | 4;
+  passedLevels: number[];
+  bestScores: Record<string, number>;
+  activeAssessment?: CourseAssessment;
+  lastResult?: CourseResult;
+  updatedAt: string;
+}
+
+export interface CourseProgress {
+  version: 1;
+  topics: Record<string, TopicCourseProgress>;
+  updatedAt: string;
+}

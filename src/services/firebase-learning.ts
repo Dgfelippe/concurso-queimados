@@ -1,13 +1,14 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   onSnapshot,
   setDoc
 } from 'firebase/firestore';
 import { firebaseApp } from './firebase';
-import type { Attempt, SimulationSession } from '../domain/types';
+import type { Attempt, CourseProgress, SimulationSession } from '../domain/types';
 import { firestoreSafe } from './firestore-sanitize';
 
 const firestore = firebaseApp ? getFirestore(firebaseApp) : null;
@@ -24,6 +25,17 @@ export async function loadCloudLearning(uid: string) {
     attempts: attempts.docs.map((item) => item.data() as Attempt),
     simulations: simulations.docs.map((item) => item.data() as SimulationSession)
   };
+}
+
+export async function loadCloudCourseProgress(uid: string): Promise<CourseProgress | null> {
+  if (!firestore) return null;
+  const snapshot = await getDoc(doc(firestore, 'users', uid, 'course', 'progress'));
+  return snapshot.exists() ? snapshot.data() as CourseProgress : null;
+}
+
+export async function saveCloudCourseProgress(uid: string, progress: CourseProgress) {
+  if (!firestore) return;
+  await setDoc(doc(firestore, 'users', uid, 'course', 'progress'), firestoreSafe(progress), { merge: true });
 }
 
 export async function saveCloudAttempt(uid: string, attempt: Attempt) {
