@@ -95,8 +95,8 @@ export function AIQuestionStudio({ onAnswer }: {
         </div>
         {mode === 'generated' ? <>
         <details className="ai-study-disclosure">
-          <summary>Privacidade e limites do recurso</summary>
-          <p>Para criar questões ou explicar um erro, o enunciado, sua resposta e o tópico estudado são enviados ao Google Gemini. Seu nome e e-mail não são enviados. As questões são material de treino, não questões oficiais. O uso gratuito tem limites e o Google pode usar solicitações para melhorar os produtos.</p>
+          <summary>Privacidade e origem do conteúdo</summary>
+          <p>As novas questões e explicações são produzidas pelo Google Gemini. Quando você solicita o recurso, o enunciado, sua resposta e o tópico estudado são enviados ao Google; seu nome e e-mail não são enviados. O material serve para treino e não substitui questões oficiais. O acesso gratuito está sujeito a limites, e o Google informa que pode usar as solicitações para melhorar seus produtos.</p>
         </details>
         <div className="ai-study-controls">
           <label>Tópico do edital
