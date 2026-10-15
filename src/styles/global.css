@@ -2279,6 +2279,33 @@ progress::-webkit-progress-value {
 .course-not-found h1 { margin-top: 0; color: var(--work-text); font-size: 20px; }
 .course-not-found p,.course-loading { color: var(--work-muted); line-height: 1.6; }
 .app-shell:not(.landing-shell)[data-theme='dark'] .course-example,.app-shell:not(.landing-shell)[data-theme='dark'] .course-exam-focus,.app-shell:not(.landing-shell)[data-theme='dark'] .course-source-note { color: var(--work-text); }
+
+.municipality-feature { display: grid; grid-template-columns: minmax(190px, 280px) 1fr; gap: 26px; align-items: center; margin-bottom: 18px; }
+.municipality-portrait-wrap { min-width: 0; }
+.municipality-portrait { display: block; width: 100%; max-height: 245px; object-fit: cover; object-position: center 28%; border-radius: 14px; background: #252938; }
+.municipality-portrait-wrap small { display: block; margin-top: 8px; color: var(--work-muted, #9299ad); font-size: 11px; }
+.municipality-portrait-wrap a,.municipality-sources a { color: var(--work-blue, #7887ff); }
+.municipality-mayor-copy h2 { margin: 8px 0; color: var(--work-text, #edf0f7); font-size: clamp(22px, 3vw, 30px); }
+.municipality-mayor-copy p,.municipality-exam-note p { color: var(--work-muted, #9299ad); line-height: 1.7; }
+.municipality-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-bottom: 18px; }
+.municipality-facts .metric { min-width: 0; }
+.municipality-facts .metric strong { font-size: clamp(19px, 2.5vw, 27px); }
+.municipality-exam-note { margin-bottom: 18px; }
+.municipality-exam-note h2,.municipality-sources h2 { margin-top: 8px; color: var(--work-text, #edf0f7); }
+.municipality-sources { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.municipality-sources h2 { width: 100%; margin-bottom: 0; }
+.municipality-sources a { font-weight: 650; }
+.app-shell:not(.landing-shell)[data-theme='dark'] .municipality-mayor-copy h2,
+.app-shell:not(.landing-shell)[data-theme='dark'] .municipality-exam-note h2,
+.app-shell:not(.landing-shell)[data-theme='dark'] .municipality-sources h2 { color: #f2f3f7; }
+.app-shell:not(.landing-shell)[data-theme='dark'] .municipality-mayor-copy p,
+.app-shell:not(.landing-shell)[data-theme='dark'] .municipality-exam-note p { color: #b5bbc8; }
+@media (max-width: 760px) {
+  .municipality-feature { grid-template-columns: 1fr; gap: 17px; }
+  .municipality-portrait { max-height: 300px; }
+  .municipality-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .municipality-facts .metric { padding: 14px; }
+}
 @media (max-width: 720px) {
   .course-level-heading,.course-assessment-top,.course-lesson-heading,.course-result-heading { align-items: flex-start; }
   .course-level-steps { grid-template-columns: 1fr 1fr; }

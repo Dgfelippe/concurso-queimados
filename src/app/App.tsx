@@ -1257,6 +1257,55 @@ function DossieQueimadosPage() {
   );
 }
 
+function MunicipalityPage() {
+  return (
+    <>
+      <PageTitle kicker="REFERÊNCIA DO MUNICÍPIO" title="Queimados em dados">
+        Informações básicas da cidade e de sua administração, reunidas para consulta durante a preparação.
+      </PageTitle>
+
+      <section className="municipality-feature panel" aria-labelledby="mayor-name">
+        <div className="municipality-portrait-wrap">
+          <img
+            className="municipality-portrait"
+            src="https://otempo.scene7.com/is/image/sempreeditora/rio-de-janeiro_queimados_prefeito_eleito?dpr=off&qlt=90&ts=1728419239251"
+            alt="Imagem de Glauco Kaizer publicada na cobertura da eleição municipal de Queimados"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+          <small>Imagem: <a href="https://www.otempo.com.br/eleicoes/2024/prefeito/2024/10/9/glauco-kaizer-do-uniao-e-eleito-prefeito-de-queimados-rj-nas-ele" target="_blank" rel="noreferrer">O Tempo</a></small>
+        </div>
+        <div className="municipality-mayor-copy">
+          <span className="eyebrow">PREFEITO · MANDATO 2025–2028</span>
+          <h2 id="mayor-name">Glauco Barbosa Hoffman Kaizer</h2>
+          <p>Nome que aparece como prefeito de Queimados no cadastro do IBGE. A informação pode mudar com o tempo; consulte a fonte oficial para confirmar se estiver estudando atualidades.</p>
+          <a className="button button-secondary" href="https://www.ibge.gov.br/cidades-e-estados/rj/queimados.html" target="_blank" rel="noreferrer">Conferir no IBGE ↗</a>
+        </div>
+      </section>
+
+      <section className="municipality-facts" aria-label="Dados de Queimados">
+        <article className="metric"><span>População no Censo 2022</span><strong>140.523</strong><small>pessoas · IBGE</small></article>
+        <article className="metric"><span>População estimada em 2026</span><strong>149.155</strong><small>pessoas · estimativa do IBGE</small></article>
+        <article className="metric"><span>Área territorial</span><strong>75,927 km²</strong><small>IBGE · referência 2025</small></article>
+        <article className="metric"><span>Densidade demográfica</span><strong>1.850,76</strong><small>hab./km² · Censo 2022</small></article>
+      </section>
+
+      <section className="panel municipality-exam-note">
+        <span className="eyebrow">PARA A SUA PROVA</span>
+        <h2>O que priorizar no edital</h2>
+        <p>O conteúdo programático de Agente Administrativo que estamos usando não traz um tópico específico de atualidades, geografia ou dados gerais do município. Por isso, prefeito, população e área são informações complementares e têm prioridade menor que Português, legislação municipal e conhecimentos específicos.</p>
+        <p>Se uma questão cobrar esses dados, confira a data e a fonte indicadas no enunciado. População estimada e ocupantes de cargos podem mudar.</p>
+      </section>
+
+      <section className="panel municipality-sources">
+        <h2>Fontes para conferir</h2>
+        <a href="https://www.ibge.gov.br/cidades-e-estados/rj/queimados.html" target="_blank" rel="noreferrer">IBGE — Cidades e Estados: Queimados ↗</a>
+        <a href="https://www.queimados.rj.gov.br/" target="_blank" rel="noreferrer">Prefeitura Municipal de Queimados ↗</a>
+      </section>
+    </>
+  );
+}
+
 /* =========================================================================
    PÁGINA 6: CADERNO DE ERROS (INTELIGÊNCIA DE REVISÃO)
    ========================================================================= */
@@ -1708,6 +1757,7 @@ function AppContent() {
             <Route path="/erros" element={<CadernoErros attempts={attempts} onAnswer={record} />} />
             <Route path="/estudo-ia" element={<AIQuestionStudio onAnswer={record} />} />
             <Route path="/legislacao" element={<DossieQueimadosPage />} />
+            <Route path="/municipio" element={<MunicipalityPage />} />
             <Route path="/conteudos/:topicId" element={<CoursePage accountUid={account.uid} onAnswer={record} onSync={setCloudStatus} />} />
             <Route
               path="/conteudos"

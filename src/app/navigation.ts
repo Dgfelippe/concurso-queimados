@@ -5,6 +5,7 @@ export const navigationItems = [
   { path: '/simulados', label: 'Simulados', shortLabel: 'Simulados', icon: '◷' },
   { path: '/erros', label: 'Caderno de erros', shortLabel: 'Erros', icon: '↗' },
   { path: '/legislacao', label: 'Dossiê Queimados', shortLabel: 'Leis', icon: '⚖️' },
+  { path: '/municipio', label: 'Queimados', shortLabel: 'Cidade', icon: '⌖' },
   { path: '/conteudos', label: 'Conteúdos', shortLabel: 'Ementa', icon: '▧' },
   { path: '/plano', label: 'Plano de estudo', shortLabel: 'Plano', icon: '▤' },
   { path: '/progresso', label: 'Progresso', shortLabel: 'Estatísticas', icon: '▥' },
