@@ -107,13 +107,14 @@ export async function generateTopicQuestions(input: {
       explanation
     }));
   const prompt = `Crie exatamente 3 questões objetivas inéditas, em português brasileiro, com quatro alternativas A-D, para treino de concurso de Agente Administrativo do Município de Queimados/RJ.
-Use exclusivamente o conteúdo do tópico abaixo e os exemplos de estilo fornecidos. Não copie as questões de exemplo. Não invente números de artigos, trechos legais ou regras municipais que não apareçam no contexto. Se o material não sustentar uma cobrança factual, faça questão conceitual segura e indique a limitação na explicação.
+Use exclusivamente o conteúdo do tópico abaixo e os exemplos de estilo fornecidos. Não copie as questões de exemplo. Distribua o bloco entre aspectos diferentes do resumo, sem repetir a mesma habilidade nas três questões. Os exemplos servem apenas para observar o formato da banca quando forem do mesmo tópico; não os trate como fonte para ampliar o conteúdo programático.
+Não invente números de artigos, trechos legais, prazos, direitos ou regras municipais que não apareçam no contexto. Se o resumo não sustentar uma cobrança factual, faça uma questão conceitual segura dentro do recorte disponível e informe essa limitação na explicação. Em informática, não cobre produto, versão, comando ou recurso que não esteja delimitado pelo edital.
 Tópico do edital: ${topic.title} (${topic.id})
 Resumo disponível: ${topic.summary}
 Matéria: ${topic.discipline}
 Dificuldade solicitada: ${input.difficulty}. Fácil = aplicação direta; média = interpretação/aplicação com um passo de raciocínio; difícil = distinção conceitual ou caso com mais de uma etapa, sem ambiguidade.
 Exemplos de estilo, para referência e não para copiar: ${JSON.stringify(examples)}
-Produza alternativas plausíveis e apenas uma correta. Explique a correta e o defeito específico de cada distrator no campo note. Responda apenas o JSON conforme o esquema.`;
+Produza alternativas plausíveis e apenas uma correta. Antes de responder, resolva cada item sem olhar o gabarito proposto, confira se exatamente uma alternativa é defensável pelo enunciado e pelo resumo e confirme que a explicação sustenta a mesma letra. Explique a correta e o defeito específico de cada distrator no campo note. Responda apenas o JSON conforme o esquema.`;
   const result = await getModel({ structuredOutput: true }).generateContent(prompt);
   const generated = responseJson(result.response.text(), generationSchema).questions;
   if (generated.some((item) => item.topicId !== topic.id || item.discipline !== topic.discipline)) {
