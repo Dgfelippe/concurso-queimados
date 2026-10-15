@@ -4,6 +4,7 @@ import type { Question } from '../domain/types';
 import { getTopic } from '../data/topics';
 import { firebaseAiConfigured, firebaseApp } from './firebase';
 import { InvalidAiJsonError, parseAiJson } from './ai-json';
+import { withAiQuotaRetry } from './ai-errors';
 
 const optionIds = ['A', 'B', 'C', 'D'] as const;
 const questionSchema = z.object({
@@ -22,13 +23,15 @@ const questionSchema = z.object({
 });
 
 const generationSchema = z.object({ questions: z.array(questionSchema).min(1).max(3) });
+const simulationGenerationSchema = z.object({ questions: z.array(questionSchema).length(9) });
 type GeneratedQuestion = z.infer<typeof questionSchema>;
 
-const schema = Schema.object({
+function structuredQuestionSchema(maxQuestions: number) {
+  return Schema.object({
   properties: {
     questions: Schema.array({
-      minItems: 1,
-      maxItems: 3,
+      minItems: maxQuestions,
+      maxItems: maxQuestions,
       items: Schema.object({
         properties: {
           discipline: Schema.enumString({ enum: ['portuguese', 'municipal_law', 'specific_knowledge'] }),
@@ -48,9 +51,10 @@ const schema = Schema.object({
     })
   },
   required: ['questions']
-});
+  });
+}
 
-function getModel(options: { systemInstruction?: string; structuredOutput?: boolean } = {}) {
+function getModel(options: { systemInstruction?: string; structuredOutput?: boolean; maxQuestions?: number } = {}) {
   if (!firebaseAiConfigured || !firebaseApp) {
     throw new Error('A IA ainda não está habilitada. Falta concluir a configuração gratuita do Firebase AI Logic e do App Check.');
   }
@@ -60,7 +64,7 @@ function getModel(options: { systemInstruction?: string; structuredOutput?: bool
     model: 'gemini-3.8-flash',
     systemInstruction: options.systemInstruction,
     generationConfig: options.structuredOutput
-      ? { maxOutputTokens: 5000, responseMimeType: 'application/json', responseSchema: schema }
+      ? { maxOutputTokens: options.maxQuestions === 9 ? 12000 : 5000, responseMimeType: 'application/json', responseSchema: structuredQuestionSchema(options.maxQuestions ?? 3) }
       : { maxOutputTokens: 5000 }
   });
 }
@@ -114,17 +118,75 @@ Produza alternativas plausíveis e apenas uma correta. Antes de responder, resol
   const model = getModel({ structuredOutput: true });
   let generated: GeneratedQuestion[];
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withAiQuotaRetry(() => model.generateContent(prompt));
     generated = responseJson(result.response.text(), generationSchema).questions;
   } catch (cause) {
     if (!(cause instanceof InvalidAiJsonError)) throw cause;
-    const retry = await model.generateContent(`${prompt}\n\nREFAÇA A RESPOSTA: entregue somente um objeto JSON completo no formato solicitado, sem introdução, sem bloco Markdown e sem texto depois do objeto.`);
+    const retry = await withAiQuotaRetry(() => model.generateContent(`${prompt}\n\nREFAÇA A RESPOSTA: entregue somente um objeto JSON completo no formato solicitado, sem introdução, sem bloco Markdown e sem texto depois do objeto.`));
     generated = responseJson(retry.response.text(), generationSchema).questions;
   }
   if (generated.some((item) => item.topicId !== topic.id || item.discipline !== topic.discipline)) {
     throw new Error('A IA trouxe uma questão fora do tópico selecionado. Gere novamente.');
   }
   return generated.map(sourceQuestion);
+}
+
+export async function generateSimulationQuestions(input: {
+  topics: { topicId: string; examples: Question[] }[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  onQuotaWait?: (milliseconds: number) => void;
+}): Promise<Record<Question['discipline'], Question[]>> {
+  if (input.topics.length !== 3) throw new Error('Não foi possível selecionar os tópicos do edital para o simulado.');
+  const topics = input.topics.map(({ topicId, examples }) => {
+    const topic = getTopic(topicId);
+    if (!topic) throw new Error('Um dos tópicos selecionados não faz parte do edital.');
+    const styleExamples = examples.filter((item) => item.topicId === topicId).slice(0, 3).map(({ prompt, options, correctOption, explanation }) => ({
+      prompt,
+      options: options.map((option) => `${option.id}) ${option.text}`),
+      correctOption,
+      explanation
+    }));
+    return { topic, examples: styleExamples };
+  });
+  const disciplines = topics.map(({ topic }) => topic.discipline);
+  if (new Set(disciplines).size !== 3) throw new Error('O simulado precisa selecionar um tópico de cada matéria.');
+
+  const topicContext = topics.map(({ topic, examples }) => JSON.stringify({
+    discipline: topic.discipline,
+    topicId: topic.id,
+    title: topic.title,
+    summary: topic.summary,
+    styleExamples: examples
+  })).join('\n');
+  const difficultyLabel = { easy: 'fácil', medium: 'média', hard: 'difícil' }[input.difficulty];
+  const prompt = `Crie exatamente 9 questões objetivas inéditas, em português brasileiro, para um simulado de Agente Administrativo do Município de Queimados/RJ. Gere exatamente 3 questões para cada tópico descrito no contexto e mantenha em cada item o discipline e topicId correspondentes.
+Use exclusivamente o resumo do tópico para definir o conteúdo. Os exemplos são apenas referência de estilo, não podem ser copiados nem usados para ampliar o conteúdo. Distribua as questões entre aspectos diferentes do resumo, com quatro alternativas A-D e apenas uma correta.
+Não invente artigos, trechos legais, prazos, direitos ou regras municipais que não apareçam no resumo. Se o resumo não sustentar uma cobrança factual, formule uma questão conceitual segura dentro do recorte e registre a limitação na explicação. Em informática, não cobre produto, versão, comando ou recurso fora do conteúdo informado.
+Dificuldade: ${difficultyLabel}. Fácil = aplicação direta; média = interpretação ou aplicação com um passo de raciocínio; difícil = distinção conceitual ou caso com mais de uma etapa, sempre sem ambiguidade.
+Para cada item, explique a resposta correta e o defeito específico de cada alternativa incorreta no campo note. Antes de responder, resolva a questão de forma independente e confira que o gabarito e a explicação concordam.
+Contexto dos três tópicos do edital (um bloco de três itens por tópico):\n${topicContext}\nResponda apenas o JSON completo conforme o esquema.`;
+
+  const model = getModel({ structuredOutput: true, maxQuestions: 9 });
+  let generated: GeneratedQuestion[];
+  try {
+    const result = await withAiQuotaRetry(() => model.generateContent(prompt), undefined, input.onQuotaWait);
+    generated = responseJson(result.response.text(), simulationGenerationSchema).questions;
+  } catch (cause) {
+    if (!(cause instanceof InvalidAiJsonError)) throw cause;
+    const retry = await withAiQuotaRetry(() => model.generateContent(`${prompt}\n\nREFAÇA: retorne somente um objeto JSON completo e válido conforme o esquema, sem Markdown ou texto adicional.`), undefined, input.onQuotaWait);
+    generated = responseJson(retry.response.text(), simulationGenerationSchema).questions;
+  }
+
+  const result: Record<Question['discipline'], Question[]> = { portuguese: [], municipal_law: [], specific_knowledge: [] };
+  for (const { topic } of topics) {
+    const matching = generated.filter((question) => question.topicId === topic.id && question.discipline === topic.discipline);
+    if (matching.length !== 3) throw new Error('A resposta não trouxe três questões para cada matéria do edital. Tente gerar o simulado novamente.');
+    result[topic.discipline] = matching.map(sourceQuestion);
+  }
+  if (generated.some((question) => !topics.some(({ topic }) => topic.id === question.topicId && topic.discipline === question.discipline))) {
+    throw new Error('A resposta trouxe questões fora dos tópicos selecionados no edital. Tente novamente.');
+  }
+  return result;
 }
 
 export async function explainMistake(input: {

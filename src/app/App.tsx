@@ -22,7 +22,8 @@ import {
 } from '../services/firebase';
 import { ErrorTutor } from './ErrorTutor';
 import { AIQuestionStudio } from './AIQuestionStudio';
-import { generateTopicQuestions } from '../services/ai-study';
+import { generateSimulationQuestions } from '../services/ai-study';
+import { getAiUserMessage } from '../services/ai-errors';
 import { firebaseAiConfigured } from '../services/firebase';
 import '../styles/global.css';
 
@@ -742,6 +743,7 @@ function ExamSimulator({
   const [items, setItems] = useState<typeof questions>([]);
   const [preparing, setPreparing] = useState(false);
   const [simulatorError, setSimulatorError] = useState('');
+  const [simulatorStatus, setSimulatorStatus] = useState('');
   const [answers, setAnswers] = useState<Record<string, OptionId>>({});
   const [index, setIndex] = useState(0);
   const [seconds, setSeconds] = useState(contest.durationMinutes * 60);
@@ -779,6 +781,7 @@ function ExamSimulator({
 
   const begin = async (withAi = true) => {
     setSimulatorError('');
+    setSimulatorStatus('');
     setPreparing(true);
     try {
       const shuffle = <T,>(values: T[]) => {
@@ -796,8 +799,12 @@ function ExamSimulator({
           const candidates = syllabusTopics.filter((topic) => topic.discipline === discipline);
           return candidates[Math.floor(Math.random() * candidates.length)];
         });
-        const generated = await Promise.all(selectedTopics.map((topic) => generateTopicQuestions({ topicId: topic.id, difficulty: 'medium', examples: questions.filter((question) => question.topicId === topic.id) })));
-        selectedTopics.forEach((topic, index) => { generatedByDiscipline[topic.discipline] = generated[index]; });
+        const generated = await generateSimulationQuestions({
+          topics: selectedTopics.map((topic) => ({ topicId: topic.id, examples: questions.filter((question) => question.topicId === topic.id) })),
+          difficulty: 'medium',
+          onQuotaWait: (milliseconds) => setSimulatorStatus(`Limite momentâneo do serviço. Nova tentativa em cerca de ${Math.ceil(milliseconds / 1000)} segundos…`)
+        });
+        Object.assign(generatedByDiscipline, generated);
       }
 
       // Cada prova combina itens inéditos recém-gerados com itens do banco local.
@@ -828,9 +835,10 @@ function ExamSimulator({
     setStartedAt(new Date().toISOString());
     setResult(null);
     } catch (cause) {
-      setSimulatorError(cause instanceof Error ? cause.message : 'Não foi possível preparar o simulado agora.');
+      setSimulatorError(getAiUserMessage(cause));
     } finally {
       setPreparing(false);
+      setSimulatorStatus('');
     }
   };
 
@@ -1004,6 +1012,7 @@ function ExamSimulator({
             Iniciar com banco local
           </button>
           </div>
+          {simulatorStatus && <p role="status" className="muted">{simulatorStatus}</p>}
         </section>
       </>
     );
