@@ -168,7 +168,7 @@ describe('navegação principal', () => {
     expect(screen.getByRole('heading', { name: 'Questões inéditas por tópico' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'IA indisponível no momento' })).toBeDisabled();
     expect(screen.getByRole('tab', { name: 'Questões reais e fontes' })).toBeInTheDocument();
-    expect(screen.getByText('Privacidade e limites do recurso')).toBeInTheDocument();
+    expect(screen.getByText('Privacidade e origem do conteúdo')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Questões reais e fontes' }));
     expect(screen.queryByText(/As questões reais mostram banca, concurso e link da prova/)).not.toBeInTheDocument();
   });

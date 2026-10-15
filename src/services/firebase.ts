@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import {
   GoogleAuthProvider,
   getAuth,
@@ -19,14 +19,14 @@ const config = {
 
 export const firebaseConfigured = Object.values(config).every(Boolean);
 export const firebaseApp = firebaseConfigured ? (getApps().length ? getApp() : initializeApp(config)) : null;
-const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
 export const firebaseAiConfigured = Boolean(firebaseApp && recaptchaSiteKey);
 
 // Initialize App Check before Auth/Firestore so public AI requests carry an attestation.
 if (firebaseApp && recaptchaSiteKey && typeof window !== 'undefined') {
   try {
     initializeAppCheck(firebaseApp, {
-      provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+      provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
       isTokenAutoRefreshEnabled: true
     });
   } catch {

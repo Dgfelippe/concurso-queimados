@@ -9,15 +9,16 @@ O simulador não diz que as questões criadas pela IA foram aplicadas em concurs
 ## Ativação do Gemini sem configurar cobrança
 
 1. No Firebase Console do projeto vinculado ao Dg Concursos, abra **AI Logic** e ative **Gemini Developer API**. Mantenha o projeto no plano Spark e não vincule uma conta de faturamento.
-2. Em **App Check**, registre o aplicativo Web com reCAPTCHA v3 e inclua os domínios de produção e desenvolvimento autorizados.
-3. No GitHub, abra **Settings → Secrets and variables → Actions → Variables** e crie `VITE_RECAPTCHA_V3_SITE_KEY` com a chave pública do reCAPTCHA v3.
-4. Confirme que as variáveis `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID` já existem no mesmo local. Publique uma nova execução do workflow do GitHub Pages.
+2. Em **Google Cloud → Fraud Defense**, crie uma chave Web baseada em pontuação para `dgfelippe.github.io`. O projeto sem faturamento usa a cota gratuita de até 10.000 avaliações mensais; ao exceder esse limite, novas avaliações falham até a virada do mês.
+3. No Firebase Console, em **App Check → Apps**, registre o app Web com o provedor reCAPTCHA Enterprise e a chave pública criada no passo anterior.
+4. No GitHub, abra **Settings → Secrets and variables → Actions → Variables** e crie `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` com a chave pública do reCAPTCHA Enterprise.
+5. Confirme que as variáveis `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_APP_ID` já existem no mesmo local. Publique uma nova execução do workflow do GitHub Pages.
 
 Sem essa configuração, o simulado continua disponível pelo banco local e mostra o aviso de que a geração por IA ainda não está ativada.
 
 ## Limites e privacidade
 
-O Firebase AI Logic não cobra pelo serviço de integração, mas o uso do Gemini tem cotas limitadas no nível gratuito. A cota pode mudar, e pedidos concorrentes podem falhar temporariamente. A integração não ativa faturamento e não oferece geração ou busca ilimitada.
+O Firebase AI Logic não cobra pelo serviço de integração, mas o uso do Gemini tem cotas limitadas no nível gratuito. A cota pode mudar, e pedidos concorrentes podem falhar temporariamente. O reCAPTCHA Enterprise Essentials oferece até 10.000 avaliações mensais sem conta de faturamento; após esse limite, as avaliações falham até o próximo mês. A integração não vincula faturamento e não oferece geração ou busca ilimitada.
 
 O modo sem cobrança não usa pesquisa web ao vivo para cada simulado. O conteúdo real é limitado a itens com fonte verificável no banco local e links para provas e plataformas externas. Busca fundamentada na web, captura automática de questões e volume ilimitado não são prometidos como gratuitos.
 
