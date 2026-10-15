@@ -59,6 +59,36 @@ const storedSimulations = (): SimulationSession[] => {
   }
 };
 
+interface SavedActiveSimulation {
+  items: Question[];
+  answers: Record<string, OptionId>;
+  index: number;
+  seconds: number;
+  isPaused: boolean;
+  deadlineAt: number | null;
+  sessionId: string;
+  startedAt: string;
+}
+
+function readActiveSimulation(storageKey: string): SavedActiveSimulation | null {
+  try {
+    const data = JSON.parse(localStorage.getItem(`${storageKey}:data`) || 'null') as Pick<SavedActiveSimulation, 'items' | 'sessionId' | 'startedAt'> | null;
+    const progress = JSON.parse(localStorage.getItem(`${storageKey}:progress`) || 'null') as Omit<SavedActiveSimulation, 'items' | 'sessionId' | 'startedAt'> | null;
+    if (!data || !Array.isArray(data.items) || data.items.length === 0 || !data.sessionId || !progress || typeof progress.seconds !== 'number') return null;
+    const seconds = progress.isPaused || !progress.deadlineAt
+      ? Math.max(0, progress.seconds)
+      : Math.max(0, Math.ceil((progress.deadlineAt - Date.now()) / 1000));
+    return { ...data, ...progress, seconds, isPaused: true };
+  } catch {
+    return null;
+  }
+}
+
+function clearActiveSimulation(storageKey: string) {
+  localStorage.removeItem(`${storageKey}:data`);
+  localStorage.removeItem(`${storageKey}:progress`);
+}
+
 function mergeById<T extends { id: string }>(local: T[], remote: T[]) {
   const merged = new Map(remote.map((item) => [item.id, item]));
   for (const item of local) merged.set(item.id, item);
@@ -737,11 +767,14 @@ function Practice({
    ========================================================================= */
 function ExamSimulator({
   onAnswer,
-  onSimulation
+  onSimulation,
+  storageKey
 }: {
   onAnswer: (qId: string, choice: OptionId, correct: boolean, reason?: ErrorReason, confidence?: Attempt['confidence'], sessionId?: string, questionSnapshot?: Question) => void;
   onSimulation: (session: SimulationSession) => void;
+  storageKey: string;
 }) {
+  const [pendingSession, setPendingSession] = useState<SavedActiveSimulation | null>(() => readActiveSimulation(storageKey));
   const [items, setItems] = useState<typeof questions>([]);
   const [preparing, setPreparing] = useState(false);
   const [simulatorError, setSimulatorError] = useState('');
@@ -759,6 +792,22 @@ function ExamSimulator({
     by: Record<Discipline, { hits: number; total: number; points: number }>;
     elapsed: number;
   }>(null);
+
+  useEffect(() => {
+    if (!items.length || !sessionId || result) return;
+    localStorage.setItem(`${storageKey}:data`, JSON.stringify({ items, sessionId, startedAt }));
+  }, [items, result, sessionId, startedAt, storageKey]);
+
+  useEffect(() => {
+    if (!items.length || !sessionId || result) return;
+    localStorage.setItem(`${storageKey}:progress`, JSON.stringify({
+      answers,
+      index,
+      seconds,
+      isPaused,
+      deadlineAt: isPaused ? null : Date.now() + seconds * 1000
+    }));
+  }, [answers, index, isPaused, items.length, result, seconds, sessionId, storageKey]);
 
   // Timer
   useEffect(() => {
@@ -836,6 +885,7 @@ function ExamSimulator({
     setIsPaused(false);
     setSessionId(crypto.randomUUID());
     setStartedAt(new Date().toISOString());
+    setPendingSession(null);
     setResult(null);
     } catch (cause) {
       setSimulatorError(getAiUserMessage(cause));
@@ -847,6 +897,7 @@ function ExamSimulator({
 
   const finish = () => {
     if (!items.length || result) return;
+    clearActiveSimulation(storageKey);
     const by: Record<Discipline, { hits: number; total: number; points: number }> = {
       portuguese: { hits: 0, total: 0, points: 0 },
       municipal_law: { hits: 0, total: 0, points: 0 },
@@ -901,6 +952,54 @@ function ExamSimulator({
   const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
   const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
+
+  const startAfterCancellingSaved = (withAi: boolean) => {
+    clearActiveSimulation(storageKey);
+    setPendingSession(null);
+    void begin(withAi);
+  };
+
+  const resumeSavedSession = () => {
+    if (!pendingSession) return;
+    setItems(pendingSession.items);
+    setAnswers(pendingSession.answers || {});
+    setIndex(Math.min(Math.max(pendingSession.index, 0), pendingSession.items.length - 1));
+    setSeconds(pendingSession.seconds);
+    setSessionId(pendingSession.sessionId);
+    setStartedAt(pendingSession.startedAt);
+    setIsPaused(false);
+    setPendingSession(null);
+  };
+
+  if (!items.length && pendingSession) {
+    const savedHours = String(Math.floor(pendingSession.seconds / 3600)).padStart(2, '0');
+    const savedMinutes = String(Math.floor((pendingSession.seconds % 3600) / 60)).padStart(2, '0');
+    const savedSeconds = String(pendingSession.seconds % 60).padStart(2, '0');
+    const savedAnsweredCount = Object.keys(pendingSession.answers || {}).length;
+    return (
+      <>
+        <PageTitle kicker="SIMULADO SALVO" title="Você pode continuar de onde parou">
+          Sua prova ficou guardada neste aparelho. Escolha continuar ou cancelar esta tentativa para começar outra.
+        </PageTitle>
+        <section className="panel resume-simulation-card" aria-label="Simulado salvo">
+          <div className="resume-simulation-summary">
+            <span className="resume-simulation-icon" aria-hidden="true">◷</span>
+            <div>
+              <strong>Simulado em andamento</strong>
+              <p>Questão {pendingSession.index + 1} de {pendingSession.items.length} · {savedAnsweredCount} respondidas · tempo restante {savedHours}:{savedMinutes}:{savedSeconds}</p>
+            </div>
+          </div>
+          <div className="simulator-start-actions">
+            <button className="button button-primary" type="button" onClick={resumeSavedSession}>Continuar de onde parei</button>
+            <button className="button button-secondary" type="button" onClick={() => startAfterCancellingSaved(false)} disabled={preparing}>Cancelar e iniciar outro com o banco local</button>
+            <button className="button button-secondary" type="button" onClick={() => startAfterCancellingSaved(true)} disabled={preparing || !firebaseAiConfigured}>Cancelar e gerar outro com questões novas</button>
+          </div>
+          {preparing && <p role="status" className="muted">Preparando um novo simulado…</p>}
+          {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
+        </section>
+      </>
+    );
+  }
 
   if (result) {
     const isApproved = result.points >= contest.minimumScore && result.zero.length === 0;
@@ -1431,9 +1530,15 @@ function AppContent() {
   const [cloudReady, setCloudReady] = useState(!firebaseConfigured);
   const [cloudStatus, setCloudStatus] = useState<'local' | 'syncing' | 'synced' | 'offline'>('local');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStorage.getItem('rq-theme') === 'light' ? 'light' : 'dark');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const isLanding = location.pathname === '/';
+  const primaryMobilePaths = ['/', '/questoes', '/simulados', '/erros'];
+  const additionalMobileItems = navigationItems.filter((item) => !primaryMobilePaths.includes(item.path));
+  const isAdditionalMobileRoute = additionalMobileItems.some((item) => location.pathname === item.path);
+
+  useEffect(() => setMobileMenuOpen(false), [location.pathname]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -1626,7 +1731,7 @@ function AppContent() {
             <Route path="/" element={<LandingPage attempts={attempts} theme={theme} onToggleTheme={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')} account={account} onSignOut={handleSignOut} />} />
             <Route path="/edital" element={<EditalGuidePage />} />
             <Route path="/questoes" element={<Practice onAnswer={record} />} />
-            <Route path="/simulados" element={<ExamSimulator onAnswer={record} onSimulation={recordSimulation} />} />
+            <Route path="/simulados" element={<ExamSimulator onAnswer={record} onSimulation={recordSimulation} storageKey={account ? `rq-active-simulation:${account.uid}` : 'rq-active-simulation'} />} />
             <Route path="/erros" element={<CadernoErros attempts={attempts} onAnswer={record} />} />
             <Route path="/estudo-ia" element={<AIQuestionStudio onAnswer={record} />} />
             <Route path="/legislacao" element={<DossieQueimadosPage />} />
@@ -1726,7 +1831,7 @@ function AppContent() {
       </div>
 
       <nav className="mobile-navigation">
-        {navigationItems.slice(0, 5).map((item) => (
+        {navigationItems.filter((item) => primaryMobilePaths.includes(item.path)).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -1737,7 +1842,35 @@ function AppContent() {
             <small>{item.shortLabel}</small>
           </NavLink>
         ))}
+        <button
+          className={`mobile-nav-item mobile-more-button${mobileMenuOpen || isAdditionalMobileRoute ? ' active' : ''}`}
+          type="button"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-more-menu"
+          aria-label={mobileMenuOpen ? 'Fechar mais opções' : 'Abrir todas as opções do programa'}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          <span aria-hidden="true">☰</span>
+          <small>Mais</small>
+        </button>
       </nav>
+      {mobileMenuOpen && (
+        <div className="mobile-menu-scrim" onClick={(event) => { if (event.target === event.currentTarget) setMobileMenuOpen(false); }}>
+          <section className="mobile-menu-sheet" id="mobile-more-menu" role="dialog" aria-modal="true" aria-label="Todas as áreas do programa">
+            <div className="mobile-menu-heading">
+              <div><span className="eyebrow">DG CONCURSOS</span><h2>Todas as áreas</h2></div>
+              <button type="button" className="mobile-menu-close" aria-label="Fechar menu" onClick={() => setMobileMenuOpen(false)}>×</button>
+            </div>
+            <nav className="mobile-menu-grid" aria-label="Outras áreas do programa">
+              {additionalMobileItems.map((item) => (
+                <NavLink key={item.path} to={item.path} className={({ isActive }) => `mobile-menu-link${isActive ? ' active' : ''}`}>
+                  <span aria-hidden="true">{item.icon}</span><span>{item.label}</span><b aria-hidden="true">→</b>
+                </NavLink>
+              ))}
+            </nav>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
