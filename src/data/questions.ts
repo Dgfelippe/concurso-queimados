@@ -1,4 +1,5 @@
 import type { Discipline, Question, OptionId } from '../domain/types';
+import { buildExpandedQuestionBank } from './question-bank-expanded';
 
 export interface QuestionData extends Question {
   examReference?: string;
@@ -881,7 +882,7 @@ const supplementaryQuestions: SupplementaryQuestion[] = [
 ];
 
 // Monta o banco autoral curado e inclui somente itens históricos com fonte verificável.
-export const questions: Question[] = [
+const curatedQuestions: Question[] = [
   ...rawQuestionsList.map((q) => ({
     id: q.id,
     discipline: q.discipline,
@@ -963,6 +964,11 @@ export const questions: Question[] = [
       year: 2016
     }
   }
+];
+
+export const questions: Question[] = [
+  ...curatedQuestions,
+  ...buildExpandedQuestionBank(curatedQuestions)
 ];
 
 // Helper functions para consulta e filtragem

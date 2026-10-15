@@ -10,8 +10,8 @@ describe('banco inicial do edital', () => {
     expect([...syllabusTopics.map((topic) => topic.id)].every((topicId) => bankTopics.has(topicId))).toBe(true);
   });
 
-  it('has_at_least_sixty_identified_questions_including_real_exams', () => {
-    expect(questions.length).toBeGreaterThanOrEqual(60);
+  it('has_at_least_one_thousand_identified_local_questions_including_real_exams', () => {
+    expect(questions.length).toBeGreaterThanOrEqual(1000);
     const hasRealContestQuestions = questions.some((q) => q.provenance.kind === 'official' || q.provenance.kind === 'third_party');
     expect(hasRealContestQuestions).toBe(true);
     expect(questions.every((q) => Boolean(q.provenance.label && q.provenance.sourceId))).toBe(true);

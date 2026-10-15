@@ -24,6 +24,7 @@ import { ErrorTutor } from './ErrorTutor';
 import { AIQuestionStudio } from './AIQuestionStudio';
 import { generateSimulationQuestions } from '../services/ai-study';
 import { getAiUserMessage } from '../services/ai-errors';
+import { selectDistinctPracticeGroups } from '../data/question-bank-expanded';
 import { firebaseAiConfigured } from '../services/firebase';
 import '../styles/global.css';
 
@@ -555,7 +556,7 @@ function Practice({
         kicker={simulation ? 'TREINO COM TEMPO' : 'PRÁTICA ATIVA'}
         title={simulation ? 'Simulado por Matéria' : 'Banco de Questões Comentadas'}
       >
-        Pratique questões de concursos anteriores e itens inéditos de treino. Confira a origem indicada em cada questão e use os comentários para decidir o que revisar.
+        Pratique itens alinhados aos tópicos do edital. Quando houver uma questão de prova anterior com fonte consultável, a banca e a origem aparecem junto do enunciado.
       </PageTitle>
 
       <div className="filter-pill-group">
@@ -576,6 +577,7 @@ function Practice({
           onClick={() => setFilterType('training')}
         >
           Treino Direcionado no Conteúdo
+          {' '}({questions.filter((item) => item.provenance.kind === 'original').length})
         </button>
       </div>
 
@@ -816,7 +818,8 @@ function ExamSimulator({
         const verified = shuffle(historical).slice(0, 1);
         const verifiedIds = new Set(verified.map((item) => item.id));
         const bank = shuffle(questions.filter((item) => item.discipline === discipline && !verifiedIds.has(item.id)));
-        const picked = [...generated, ...verified, ...bank.slice(0, Math.max(0, remaining - verified.length))];
+        const localNeeded = Math.max(0, remaining - verified.length);
+        const picked = [...generated, ...verified, ...selectDistinctPracticeGroups(bank, localNeeded)];
         return shuffle(picked).slice(0, count);
       };
 
@@ -969,7 +972,7 @@ function ExamSimulator({
                     <span style={{ color: '#68827b' }}>{labels[simQ.discipline]}</span>
                   </div>
                   <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 600, color: '#172c2b' }}>{simQ.prompt}</p>
-                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : simQ.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
+                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : simQ.provenance.kind === 'original' ? simQ.provenance.label : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#465f58', lineHeight: 1.5 }}>
                     <strong>Comentário:</strong> {simQ.explanation}
                   </p>
@@ -1000,7 +1003,7 @@ function ExamSimulator({
           </ul>
 
           <div className="pegadinha-alert" style={{ margin: '20px 0' }}>
-            <strong>Como os itens são escolhidos:</strong> a IA cria novas questões por tópico do edital; o restante vem do banco local embaralhado. O banco local tem poucas questões reais verificadas, então o app informa a procedência e não apresenta treino autoral como prova passada. Reserve os últimos 20 minutos para revisar o cartão-resposta.
+            <strong>Como os itens são escolhidos:</strong> a IA cria novas questões por tópico do edital; o restante vem do banco local embaralhado, que reúne {questions.length.toLocaleString('pt-BR')} itens nos conteúdos do edital. {questions.filter((item) => item.provenance.kind !== 'original').length} questão tem prova anterior e fonte consultável; as demais são itens autorais e variações para treino. Reserve os últimos 20 minutos para revisar o cartão-resposta.
           </div>
 
           {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
@@ -1055,7 +1058,7 @@ function ExamSimulator({
           </span>
         </div>
         <div className={`exam-provenance ${q.provenance.kind === 'original' ? 'is-original' : 'is-real'}`}>
-          {q.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : q.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
+          {q.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : q.provenance.kind === 'original' ? q.provenance.label : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
         </div>
 
         <h2>{q.prompt}</h2>

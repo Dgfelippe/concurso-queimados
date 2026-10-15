@@ -20,6 +20,8 @@ export interface QuestionProvenance {
 
 export interface Question {
   id: string;
+  /** Links contextual variations of one concept so a single exam can avoid repeats. */
+  practiceGroupId?: string;
   discipline: Discipline;
   topicId: string;
   prompt: string;
