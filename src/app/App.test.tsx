@@ -12,6 +12,7 @@ const { authState, signInMock } = vi.hoisted(() => ({
 
 vi.mock('../services/firebase', () => ({
   firebaseConfigured: true,
+  firebaseAiConfigured: false,
   observeAuth: (callback: (user: unknown) => void) => {
     callback(authState.currentUser);
     return () => {};
@@ -138,6 +139,37 @@ describe('navegação principal', () => {
     expect(attempts[0].sessionId).toEqual(expect.any(String));
   });
 
+  it('completes a full 30-question simulation and shows the result by subject', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await renderApp(['/simulados']);
+    await user.click(screen.getByRole('button', { name: /Iniciar com banco local/i }));
+
+    for (let index = 0; index < 30; index++) {
+      const firstOption = document.querySelector('.option-list button');
+      expect(firstOption, `questão ${index + 1} deve exibir alternativas`).toBeTruthy();
+      await user.click(firstOption!);
+      if (index < 29) {
+        await user.click(screen.getByRole('button', { name: 'Próxima Questão →' }));
+      }
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Entregar Prova e Ver Gabarito' }));
+    expect(screen.getByRole('heading', { name: /de 100 Pontos/ })).toBeInTheDocument();
+    expect(screen.getByText('Desempenho por Disciplina:')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Revisão Detalhada das 30 Questões do Simulado' })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('rq-attempts:test-user') || '[]')).toHaveLength(30);
+    expect(JSON.parse(localStorage.getItem('rq-simulations:test-user') || '[]')).toHaveLength(1);
+  }, 30000);
+
+  it('opens the AI study page and clearly reports missing cloud configuration', async () => {
+    await renderApp(['/estudo-ia']);
+    expect(screen.getByRole('heading', { name: 'Questões inéditas por tópico' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar 3 questões' })).toBeDisabled();
+    expect(screen.getByText(/falta ativar Firebase AI Logic e App Check/i)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Questões reais e fontes' })).toBeInTheDocument();
+  });
+
   it('keeps an old wrong answer in the error tutor after a later correct answer', async () => {
     const question = questions[0];
     const wrongOption = question.options.find((option) => option.id !== question.correctOption)!;
@@ -183,7 +215,7 @@ describe('navegação principal', () => {
 
     cleanup();
     await renderApp(['/erros']);
-    expect(screen.getByRole('heading', { name: 'Aula da questão' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Aula da questão' })).toBeInTheDocument();
     const secondRetryArea = within(document.querySelector('.review-retry-section')!);
     await user.click(secondRetryArea.getByRole('button', { name: new RegExp(correctText) }));
     await user.click(secondRetryArea.getByRole('button', { name: 'Conferir resposta' }));
