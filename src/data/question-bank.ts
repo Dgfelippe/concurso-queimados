@@ -6,12 +6,16 @@ const questionSchema = z.object({
   discipline: z.enum(['portuguese', 'municipal_law', 'specific_knowledge']),
   topicId: z.string().min(1),
   prompt: z.string().min(10),
-  options: z.array(z.object({ id: z.enum(['A', 'B', 'C', 'D']), text: z.string().min(1), note: z.string().min(1) })).length(4),
-  correctOption: z.enum(['A', 'B', 'C', 'D']),
+  options: z.array(z.object({ id: z.enum(['A', 'B', 'C', 'D', 'E']), text: z.string().min(1), note: z.string().min(1) })).min(4).max(5),
+  correctOption: z.enum(['A', 'B', 'C', 'D', 'E']),
   explanation: z.string().min(1),
   provenance: z.object({ kind: z.enum(['official', 'third_party', 'original']), label: z.string().min(1), sourceId: z.string().min(1), url: z.string().url().optional(), banca: z.string().optional(), contest: z.string().optional(), year: z.number().optional() }),
   difficulty: z.enum(['easy', 'medium', 'hard'])
 }).superRefine((question, context) => {
+  const expectedOptionIds = ['A', 'B', 'C', 'D', 'E'].slice(0, question.options.length);
+  if (question.options.some((option, index) => option.id !== expectedOptionIds[index])) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'As alternativas precisam estar identificadas em sequência de A até E.' });
+  }
   const provenance = question.provenance;
   if (provenance.kind !== 'original' && (!provenance.url || !provenance.banca || !provenance.contest || !provenance.year)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['provenance'], message: 'Questão histórica exige URL, banca, concurso e ano verificáveis.' });

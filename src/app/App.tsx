@@ -562,7 +562,7 @@ function Practice({
       if (event.altKey || event.ctrlKey || event.metaKey) return;
 
       const key = event.key.toUpperCase();
-      if (!show && ['A', 'B', 'C', 'D'].includes(key)) {
+      if (!show && ['A', 'B', 'C', 'D', 'E'].includes(key)) {
         event.preventDefault();
         setChoice(key as OptionId);
       } else if (event.key === 'Enter') {

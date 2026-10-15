@@ -19,8 +19,8 @@ describe('banco inicial do edital', () => {
 
   it('has_four_unique_options_and_a_valid_answer_key', () => {
     for (const question of questions) {
-      expect(question.options.map((option) => option.id)).toEqual(['A', 'B', 'C', 'D']);
-      expect(new Set(question.options.map((option) => option.text)).size).toBe(4);
+      expect(question.options.map((option) => option.id)).toEqual(['A', 'B', 'C', 'D', 'E'].slice(0, question.options.length));
+      expect(new Set(question.options.map((option) => option.text)).size).toBe(question.options.length);
       expect(question.options.some((option) => option.id === question.correctOption)).toBe(true);
     }
   });

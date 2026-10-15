@@ -1,5 +1,5 @@
 export type Discipline = 'portuguese' | 'municipal_law' | 'specific_knowledge';
-export type OptionId = 'A' | 'B' | 'C' | 'D';
+export type OptionId = 'A' | 'B' | 'C' | 'D' | 'E';
 export type QuestionSourceKind = 'official' | 'third_party' | 'original';
 
 export interface QuestionOption {
