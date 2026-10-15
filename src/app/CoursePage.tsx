@@ -3,9 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import type { Attempt, CourseAssessment, CourseProgress, CourseResult, OptionId, Question, TopicCourseProgress } from '../domain/types';
 import { syllabusTopics } from '../data/topics';
 import { getCourseUnits } from '../data/course-lessons';
-import { firebaseAiConfigured, loadCloudCourseProgress, saveCloudCourseProgress } from '../services/firebase';
-import { generateCourseAssessment } from '../services/ai-study';
-import { getAiUserMessage } from '../services/ai-errors';
+import { getPreparedCourseAssessment } from '../data/course-assessments';
+import { loadCloudCourseProgress, saveCloudCourseProgress } from '../services/firebase';
 
 const PASS_SCORE = 8;
 const municipalLawSources = {
@@ -67,7 +66,6 @@ export function CoursePage({ accountUid, onAnswer, onSync }: {
   const units = topic ? getCourseUnits(topic) : undefined;
   const [progress, setProgress] = useState<CourseProgress>(() => readProgress(accountUid));
   const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selectedOption, setSelectedOption] = useState<OptionId | ''>('');
 
@@ -136,27 +134,24 @@ export function CoursePage({ accountUid, onAnswer, onSync }: {
     return result;
   };
 
-  const startAssessment = async () => {
-    if (!topic || !unit || !firebaseAiConfigured) return;
-    setBusy(true);
+  const startAssessment = () => {
+    if (!topic) return;
     setError('');
-    try {
-      const items = await generateCourseAssessment({ topicId: topic.id, level: currentLevel, unit });
-      const assessment: CourseAssessment = {
-        id: crypto.randomUUID(),
-        level: currentLevel,
-        items,
-        answers: {},
-        index: 0,
-        startedAt: new Date().toISOString()
-      };
-      setProgress((previous) => patchTopic(previous, topic.id, { activeAssessment: assessment }));
-      setSelectedOption('');
-    } catch (cause) {
-      setError(getAiUserMessage(cause));
-    } finally {
-      setBusy(false);
+    const items = getPreparedCourseAssessment(topic.id, currentLevel);
+    if (items.length !== 10) {
+      setError('Ainda não há dez questões preparadas para este tópico. Escolha outro conteúdo e tente novamente.');
+      return;
     }
+    const assessment: CourseAssessment = {
+      id: crypto.randomUUID(),
+      level: currentLevel,
+      items,
+      answers: {},
+      index: 0,
+      startedAt: new Date().toISOString()
+    };
+    setProgress((previous) => patchTopic(previous, topic.id, { activeAssessment: assessment }));
+    setSelectedOption('');
   };
 
   const saveAnswer = (choice: OptionId) => {
@@ -200,13 +195,13 @@ export function CoursePage({ accountUid, onAnswer, onSync }: {
       </header>
 
       <section className="panel course-level-map" aria-label="Etapas da trilha">
-        <div className="course-level-heading"><div><span className="eyebrow">DO BÁSICO AO AVANÇADO</span><h2>Sua trilha de aprendizagem</h2></div><span className="course-map-count">{topicProgress?.passedLevels.length ?? 0}/3 etapas concluídas</span></div>
+        <div className="course-level-heading"><div><span className="eyebrow">FUNDAMENTAL · INTERMEDIÁRIO · AVANÇADO</span><h2>Sua trilha de aprendizagem</h2></div><span className="course-map-count">{topicProgress?.passedLevels.length ?? 0}/3 etapas concluídas</span></div>
         <div className="course-level-steps">
           {units.map((step, index) => {
             const level = index + 1;
             const passed = topicProgress?.passedLevels.includes(level) ?? false;
             const locked = level > currentLevel;
-            return <div key={step.title} className={`course-level-step${passed ? ' is-passed' : ''}${level === currentLevel && !passed ? ' is-current' : ''}${locked ? ' is-locked' : ''}`}><span>{passed ? '✓' : level}</span><div><strong>{level === 1 ? 'Fundamentos' : level === 2 ? 'Aplicação' : 'Avançado'}</strong><small>{locked ? 'Conclua a etapa anterior' : step.title}</small></div></div>;
+            return <div key={step.title} className={`course-level-step${passed ? ' is-passed' : ''}${level === currentLevel && !passed ? ' is-current' : ''}${locked ? ' is-locked' : ''}`}><span>{passed ? '✓' : level}</span><div><strong>{level === 1 ? 'Fundamental' : level === 2 ? 'Intermediário' : 'Avançado'}</strong><small>{locked ? 'Conclua a etapa anterior' : step.title}</small></div></div>;
           })}
           <div className={`course-level-step course-level-finish${topicProgress?.currentLevel === 4 ? ' is-passed' : ' is-locked'}`}><span>{topicProgress?.currentLevel === 4 ? '✓' : '★'}</span><div><strong>Apto ao simulado</strong><small>Após aprovação nas três etapas</small></div></div>
         </div>
@@ -214,7 +209,7 @@ export function CoursePage({ accountUid, onAnswer, onSync }: {
 
       {active ? (
         <section className="panel course-assessment-panel" aria-label="Prova de fixação">
-          <div className="course-assessment-top"><div><span className="eyebrow">AVALIAÇÃO DA ETAPA {active.level}</span><h2>{unit.title}</h2></div><button className="text-button" type="button" onClick={cancelAssessment}>Cancelar avaliação</button></div>
+          <div className="course-assessment-top"><div><span className="eyebrow">PROVA {active.level === 1 ? 'FUNDAMENTAL' : active.level === 2 ? 'INTERMEDIÁRIA' : 'AVANÇADA'}</span><h2>{unit.title}</h2></div><button className="text-button" type="button" onClick={cancelAssessment}>Cancelar avaliação</button></div>
           <div className="course-question-progress"><span>Questão {active.index + 1} de 10</span><span>{Object.keys(active.answers).length} respondidas</span><progress value={Object.keys(active.answers).length} max={10} /></div>
           {question && <article className="course-test-question"><h3>{question.prompt}</h3><div className="option-list">{question.options.map((option) => <button type="button" key={option.id} aria-pressed={(selectedOption || active.answers[question.id]) === option.id} className={`option${(selectedOption || active.answers[question.id]) === option.id ? ' selected' : ''}`} onClick={() => saveAnswer(option.id)}><b>{option.id}</b><span>{option.text}</span></button>)}</div></article>}
           <div className="course-assessment-actions">
@@ -223,21 +218,21 @@ export function CoursePage({ accountUid, onAnswer, onSync }: {
           </div>
           <div className="course-question-jump" aria-label="Navegar pelas questões">{active.items.map((item, index) => <button type="button" key={item.id} className={`${index === active.index ? 'current' : ''}${active.answers[item.id] ? ' answered' : ''}`} aria-label={`Ir para a questão ${index + 1}`} onClick={() => navigateAssessment(index)}>{index + 1}</button>)}</div>
           <p className="course-assessment-footnote">A aprovação exige 8 acertos. Você pode sair da página e voltar depois; a avaliação fica salva na sua conta.</p>
-          <details className="course-privacy"><summary>Sobre esta avaliação</summary><p>O tópico e o conteúdo da aula são enviados ao Google Gemini para preparar questões novas de treino. Seu nome e e-mail não são enviados. Elas não são questões oficiais de provas anteriores e podem conter erro; confira as fontes indicadas, especialmente em legislação. O acesso gratuito tem limites de uso.</p></details>
+          <details className="course-privacy"><summary>Sobre esta avaliação</summary><p>Esta prova usa questões autorais de treino já incluídas no banco do Dg Concursos. Ela não depende de geração em tempo real e não é apresentada como prova oficial. Em legislação municipal, confira sempre a versão vigente nas fontes indicadas.</p></details>
         </section>
       ) : topicProgress?.currentLevel === 4 ? (
         <><section className="panel course-ready-panel"><span className="course-ready-icon" aria-hidden="true">✓</span><div><span className="eyebrow">ETAPA CONCLUÍDA</span><h2>Você está apto para o simulado deste tópico.</h2><p>As três etapas foram aprovadas. Revise seus erros quando quiser ou siga para o simulado geral.</p></div><Link className="button button-primary" to="/simulados">Ir para simulados</Link></section>{lastResult && <CourseResultView result={lastResult} onReview={() => document.getElementById('course-last-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />}</>
       ) : (
         <section className="panel course-lesson-panel">
-          <div className="course-lesson-heading"><div><span className="eyebrow">ETAPA {currentLevel} · {currentLevel === 1 ? 'FUNDAMENTOS' : currentLevel === 2 ? 'APLICAÇÃO' : 'AVANÇADO'}</span><h2>{unit.title}</h2></div><span className="badge badge-neutral">Aula {currentLevel} de 3</span></div>
+          <div className="course-lesson-heading"><div><span className="eyebrow">ETAPA {currentLevel} · {currentLevel === 1 ? 'FUNDAMENTAL' : currentLevel === 2 ? 'INTERMEDIÁRIO' : 'AVANÇADO'}</span><h2>{unit.title}</h2></div><span className="badge badge-neutral">Aula {currentLevel} de 3</span></div>
           <p className="course-objective"><strong>Ao final desta etapa:</strong> {unit.objective}</p>
           <div className="course-lesson-copy"><p>{unit.lesson}</p><div className="course-example"><strong>Exemplo explicado</strong><p>{unit.example}</p></div><div className="course-exam-focus"><strong>Como isso aparece na prova</strong><p>{unit.examFocus}</p></div></div>
 
           {topic.id === 'lm-organica' && <div className="course-source-note"><strong>Texto legal de referência</strong><p>A fonte oficial consultada é a 4ª edição (2011). Confira as emendas mais recentes e o texto indicado no edital antes de memorizar artigos.</p><a href={municipalLawSources.organic} target="_blank" rel="noreferrer">Abrir Lei Orgânica na fonte municipal ↗</a></div>}
           {topic.id === 'lm-estatuto' && <div className="course-source-note"><strong>Texto legal de referência</strong><p>O PDF disponibilizado para estudo informa alteração pela Lei nº 1.366/2017. Confirme se o edital ou a Prefeitura publicou atualização posterior antes de usar artigos e prazos como regra vigente.</p><a href={`${import.meta.env.BASE_URL}docs/lei-1060-2011-versao-enviada.pdf`} target="_blank" rel="noreferrer">Abrir PDF de estudo da Lei nº 1.060/2011 ↗</a><a href={municipalLawSources.statute} target="_blank" rel="noreferrer">Consultar lista oficial de leis municipais ↗</a></div>}
 
-          <div className="course-assessment-start"><div><strong>Prova de fixação</strong><p>10 questões novas sobre esta aula. Para avançar, acerte pelo menos 8.</p></div><button type="button" className="button button-primary" onClick={startAssessment} disabled={busy || !firebaseAiConfigured}>{busy ? 'Preparando sua prova…' : !firebaseAiConfigured ? 'Avaliação indisponível no momento' : lastResult?.level === currentLevel ? 'Refazer avaliação' : 'Começar avaliação'}</button></div>
-          <details className="course-privacy"><summary>Como a prova é preparada</summary><p>O tópico e o conteúdo desta aula são enviados ao Google Gemini para montar as questões. Seu nome e e-mail não são enviados. As questões são novas para treino, não são provas oficiais e podem conter erro; confira o conteúdo legal nas fontes indicadas. O acesso gratuito tem limites de uso.</p></details>
+          <div className="course-assessment-start"><div><strong>Prova de fixação</strong><p>10 questões do banco local sobre o conteúdo. Para avançar, acerte pelo menos 8.</p></div><button type="button" className="button button-primary" onClick={startAssessment}>{lastResult?.level === currentLevel ? 'Refazer avaliação' : 'Começar avaliação'}</button></div>
+          <details className="course-privacy"><summary>Sobre as questões</summary><p>As questões desta prova já estão incluídas no banco do Dg Concursos. São itens autorais de treino, não questões oficiais de provas anteriores. Em legislação municipal, confira a versão vigente nas fontes indicadas.</p></details>
           {error && <p className="course-error" role="alert">{error}</p>}
 
           {lastResult && <CourseResultView result={lastResult} onReview={() => document.getElementById('course-last-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />}

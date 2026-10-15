@@ -23,10 +23,7 @@ import {
 import { ErrorTutor } from './ErrorTutor';
 import { AIQuestionStudio } from './AIQuestionStudio';
 import { CoursePage } from './CoursePage';
-import { generateSimulationQuestions } from '../services/ai-study';
-import { getAiUserMessage } from '../services/ai-errors';
 import { selectDistinctPracticeGroups } from '../data/question-bank-expanded';
-import { firebaseAiConfigured } from '../services/firebase';
 import '../styles/global.css';
 
 const labels: Record<Discipline, string> = {
@@ -779,7 +776,6 @@ function ExamSimulator({
   const [items, setItems] = useState<typeof questions>([]);
   const [preparing, setPreparing] = useState(false);
   const [simulatorError, setSimulatorError] = useState('');
-  const [simulatorStatus, setSimulatorStatus] = useState('');
   const [answers, setAnswers] = useState<Record<string, OptionId>>({});
   const [index, setIndex] = useState(0);
   const [seconds, setSeconds] = useState(contest.durationMinutes * 60);
@@ -831,9 +827,8 @@ function ExamSimulator({
     }
   }, [seconds]);
 
-  const begin = async (withAi = true) => {
+  const begin = () => {
     setSimulatorError('');
-    setSimulatorStatus('');
     setPreparing(true);
     try {
       const shuffle = <T,>(values: T[]) => {
@@ -844,32 +839,15 @@ function ExamSimulator({
         }
         return shuffled;
       };
-      const generatedByDiscipline: Record<Discipline, Question[]> = { portuguese: [], municipal_law: [], specific_knowledge: [] };
-      if (withAi) {
-        if (!firebaseAiConfigured) throw new Error('A geração em tempo real ainda depende de ativar Firebase AI Logic, App Check e a chave pública do reCAPTCHA no projeto. Você pode iniciar agora pelo banco local.');
-        const selectedTopics = (['portuguese', 'municipal_law', 'specific_knowledge'] as Discipline[]).map((discipline) => {
-          const candidates = syllabusTopics.filter((topic) => topic.discipline === discipline);
-          return candidates[Math.floor(Math.random() * candidates.length)];
-        });
-        const generated = await generateSimulationQuestions({
-          topics: selectedTopics.map((topic) => ({ topicId: topic.id, examples: questions.filter((question) => question.topicId === topic.id) })),
-          difficulty: 'medium',
-          onQuotaWait: (milliseconds) => setSimulatorStatus(`Limite momentâneo do serviço. Nova tentativa em cerca de ${Math.ceil(milliseconds / 1000)} segundos…`)
-        });
-        Object.assign(generatedByDiscipline, generated);
-      }
-
-      // Cada prova combina itens inéditos recém-gerados com itens do banco local.
-      // Questões reais são identificadas e incluídas com a respectiva procedência.
+      // A prova usa somente questões já incluídas no banco local do projeto.
+      // Questões de provas anteriores são mantidas com a procedência consultável.
       const getSample = (discipline: Discipline, count: number) => {
-        const generated = shuffle(generatedByDiscipline[discipline]).slice(0, Math.min(3, count));
-        const remaining = count - generated.length;
         const historical = discipline === 'specific_knowledge' ? questions.filter((item) => item.discipline === discipline && item.provenance.kind !== 'original') : [];
         const verified = shuffle(historical).slice(0, 1);
         const verifiedIds = new Set(verified.map((item) => item.id));
         const bank = shuffle(questions.filter((item) => item.discipline === discipline && !verifiedIds.has(item.id)));
-        const localNeeded = Math.max(0, remaining - verified.length);
-        const picked = [...generated, ...verified, ...selectDistinctPracticeGroups(bank, localNeeded)];
+        const localNeeded = Math.max(0, count - verified.length);
+        const picked = [...verified, ...selectDistinctPracticeGroups(bank, localNeeded)];
         return shuffle(picked).slice(0, count);
       };
 
@@ -888,11 +866,10 @@ function ExamSimulator({
     setStartedAt(new Date().toISOString());
     setPendingSession(null);
     setResult(null);
-    } catch (cause) {
-      setSimulatorError(getAiUserMessage(cause));
+    } catch {
+      setSimulatorError('Não foi possível montar o simulado com o banco local. Atualize a página e tente novamente.');
     } finally {
       setPreparing(false);
-      setSimulatorStatus('');
     }
   };
 
@@ -954,10 +931,10 @@ function ExamSimulator({
   const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
 
-  const startAfterCancellingSaved = (withAi: boolean) => {
+  const startAfterCancellingSaved = () => {
     clearActiveSimulation(storageKey);
     setPendingSession(null);
-    void begin(withAi);
+    void begin();
   };
 
   const resumeSavedSession = () => {
@@ -992,8 +969,7 @@ function ExamSimulator({
           </div>
           <div className="simulator-start-actions">
             <button className="button button-primary" type="button" onClick={resumeSavedSession}>Continuar de onde parei</button>
-            <button className="button button-secondary" type="button" onClick={() => startAfterCancellingSaved(false)} disabled={preparing}>Cancelar e iniciar outro com o banco local</button>
-            <button className="button button-secondary" type="button" onClick={() => startAfterCancellingSaved(true)} disabled={preparing || !firebaseAiConfigured}>Cancelar e gerar outro com questões novas</button>
+            <button className="button button-secondary" type="button" onClick={startAfterCancellingSaved} disabled={preparing}>Cancelar e iniciar outro simulado</button>
           </div>
           {preparing && <p role="status" className="muted">Preparando um novo simulado…</p>}
           {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
@@ -1048,7 +1024,7 @@ function ExamSimulator({
           </div>
 
           <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="button button-primary" onClick={() => void begin(true)}>
+            <button className="button button-primary" onClick={() => void begin()}>
               Refazer Novo Simulado (3 Horas)
             </button>
             <button className="button button-secondary" onClick={() => setResult(null)}>
@@ -1088,8 +1064,8 @@ function ExamSimulator({
   if (!items.length) {
     return (
       <>
-        <PageTitle kicker="FORMATO DO EDITAL 01/2026 · TREINO DINÂMICO" title="Simulador de Prova Completa">
-          Cada prova mistura questões inéditas recém-geradas pela IA com itens do banco de treino, mantendo a distribuição e os pesos do edital. Questões reais aparecem com banca, concurso, ano e link de origem.
+          <PageTitle kicker="FORMATO DO EDITAL 01/2026 · BANCO LOCAL" title="Simulador de Prova Completa">
+          Cada simulado é montado com questões já disponíveis no banco do projeto e respeita a distribuição e os pesos do edital. Quando um item tem origem em prova anterior, a banca e a fonte aparecem junto da questão.
         </PageTitle>
 
         <section className="panel">
@@ -1103,19 +1079,15 @@ function ExamSimulator({
           </ul>
 
           <div className="pegadinha-alert" style={{ margin: '20px 0' }}>
-            <strong>Como os itens são escolhidos:</strong> a IA cria novas questões por tópico do edital; o restante vem do banco local embaralhado, que reúne {questions.length.toLocaleString('pt-BR')} itens nos conteúdos do edital. {questions.filter((item) => item.provenance.kind !== 'original').length} questão tem prova anterior e fonte consultável; as demais são itens autorais e variações para treino. Reserve os últimos 20 minutos para revisar o cartão-resposta.
+            <strong>Como os itens são escolhidos:</strong> a prova é montada na hora a partir das {questions.length.toLocaleString('pt-BR')} questões já incluídas no banco local e embaralhadas por disciplina. {questions.filter((item) => item.provenance.kind !== 'original').length} item tem prova anterior e fonte consultável; os demais são questões autorais e variações para treino. Reserve os últimos 20 minutos para revisar o cartão-resposta.
           </div>
 
           {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
           <div className="simulator-start-actions">
-          <button className="button button-primary" aria-label={firebaseAiConfigured ? 'Iniciar simulado completo com IA' : 'Simulado com IA indisponível'} onClick={() => void begin(true)} disabled={preparing || !firebaseAiConfigured}>
-            {preparing ? 'Gerando questões e montando prova…' : firebaseAiConfigured ? 'Gerar simulado com IA →' : 'Simulado com IA indisponível'}
-          </button>
-          <button className="button button-secondary" onClick={() => void begin(false)} disabled={preparing}>
-            Iniciar com banco local
+          <button className="button button-primary" onClick={() => void begin()} disabled={preparing}>
+            {preparing ? 'Montando seu simulado…' : 'Começar simulado →'}
           </button>
           </div>
-          {simulatorStatus && <p role="status" className="muted">{simulatorStatus}</p>}
         </section>
       </>
     );
