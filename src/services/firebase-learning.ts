@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { firebaseApp } from './firebase';
 import type { Attempt, SimulationSession } from '../domain/types';
+import { firestoreSafe } from './firestore-sanitize';
 
 const firestore = firebaseApp ? getFirestore(firebaseApp) : null;
 const userCollection = (uid: string, name: 'attempts' | 'simulations') =>
@@ -27,12 +28,12 @@ export async function loadCloudLearning(uid: string) {
 
 export async function saveCloudAttempt(uid: string, attempt: Attempt) {
   if (!firestore) return;
-  await setDoc(doc(firestore, 'users', uid, 'attempts', attempt.id), attempt, { merge: true });
+  await setDoc(doc(firestore, 'users', uid, 'attempts', attempt.id), firestoreSafe(attempt), { merge: true });
 }
 
 export async function saveCloudSimulation(uid: string, session: SimulationSession) {
   if (!firestore) return;
-  await setDoc(doc(firestore, 'users', uid, 'simulations', session.id), session, { merge: true });
+  await setDoc(doc(firestore, 'users', uid, 'simulations', session.id), firestoreSafe(session), { merge: true });
 }
 
 export async function syncLocalLearning(uid: string, attempts: Attempt[], simulations: SimulationSession[]) {
