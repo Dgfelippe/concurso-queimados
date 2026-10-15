@@ -2,6 +2,7 @@ import type { Discipline, Question, OptionId } from '../domain/types';
 import { buildExpandedQuestionBank } from './question-bank-expanded';
 import { archiveQuestions } from './archive-questions';
 import { gameleiraQuestions } from './gameleira-questions';
+import { urubiciQuestions } from './urubici-questions';
 
 export interface QuestionData extends Question {
   examReference?: string;
@@ -887,6 +888,7 @@ const supplementaryQuestions: SupplementaryQuestion[] = [
 const curatedQuestions: Question[] = [
   ...archiveQuestions,
   ...gameleiraQuestions,
+  ...urubiciQuestions,
   ...rawQuestionsList.map((q) => ({
     id: q.id,
     discipline: q.discipline,

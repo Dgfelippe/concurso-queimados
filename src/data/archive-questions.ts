@@ -2,7 +2,7 @@ import type { Question, OptionId } from '../domain/types';
 
 const source = {
   kind: 'official' as const,
-  label: 'Questão de prova anterior — gabarito final oficial',
+  label: 'Treino adaptado de prova anterior — gabarito final oficial conferido',
   sourceId: 'iv-ufg-goiania-2026',
   url: 'https://sistemas.institutoverbena.ufg.br/2025/concurso-camara-goiania/sistema/provas_gabaritos/provas/agente%20administrativo.pdf',
   banca: 'IV-UFG',

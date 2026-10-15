@@ -598,7 +598,7 @@ function Practice({
           className={`filter-pill ${filterType === 'real' ? 'active' : ''}`}
           onClick={() => setFilterType('real')}
         >
-          Provas anteriores com fonte ({questions.filter((item) => item.provenance.kind !== 'original').length})
+          Treinos baseados em provas com fonte ({questions.filter((item) => item.provenance.kind !== 'original').length})
         </button>
         <button
           className={`filter-pill ${filterType === 'training' ? 'active' : ''}`}
@@ -1048,7 +1048,7 @@ function ExamSimulator({
                     <span style={{ color: '#68827b' }}>{labels[simQ.discipline]}</span>
                   </div>
                   <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 600, color: '#172c2b' }}>{simQ.prompt}</p>
-                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : simQ.provenance.kind === 'original' ? simQ.provenance.label : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
+                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : simQ.provenance.kind === 'original' ? simQ.provenance.label : <>{simQ.provenance.label} · {simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#465f58', lineHeight: 1.5 }}>
                     <strong>Comentário:</strong> {simQ.explanation}
                   </p>
@@ -1079,7 +1079,7 @@ function ExamSimulator({
           </ul>
 
           <div className="pegadinha-alert" style={{ margin: '20px 0' }}>
-            <strong>Como os itens são escolhidos:</strong> a prova é montada na hora a partir das {questions.length.toLocaleString('pt-BR')} questões já incluídas no banco local e embaralhadas por disciplina. {questions.filter((item) => item.provenance.kind !== 'original').length} item tem prova anterior e fonte consultável; os demais são questões autorais e variações para treino. Reserve os últimos 20 minutos para revisar o cartão-resposta.
+            <strong>Como os itens são escolhidos:</strong> a prova é montada na hora a partir das {questions.length.toLocaleString('pt-BR')} questões já incluídas no banco local e embaralhadas por disciplina. O acervo reúne itens adaptados de provas com fonte consultável e questões autorais de treino. Reserve os últimos 20 minutos para revisar o cartão-resposta.
           </div>
 
           {simulatorError && <p className="ai-error-message" role="alert">{simulatorError}</p>}
@@ -1130,7 +1130,7 @@ function ExamSimulator({
           </span>
         </div>
         <div className={`exam-provenance ${q.provenance.kind === 'original' ? 'is-original' : 'is-real'}`}>
-          {q.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : q.provenance.kind === 'original' ? q.provenance.label : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
+          {q.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : q.provenance.kind === 'original' ? q.provenance.label : <>{q.provenance.label} · {q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
         </div>
 
         <h2>{q.prompt}</h2>

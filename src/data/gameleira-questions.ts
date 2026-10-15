@@ -2,7 +2,7 @@ import type { Question } from '../domain/types';
 
 const provenance = {
   kind: 'official' as const,
-  label: 'Questão de prova anterior — conferida no gabarito final oficial',
+  label: 'Treino adaptado de prova oficial — gabarito final conferido',
   sourceId: 'iv-ufg-gameleira-2025',
   url: 'https://sistemas.institutoverbena.ufg.br/2025/prefeitura-gameleira/sistema/provas_gabaritos/provas/agente%20administrativo.pdf',
   banca: 'IV-UFG',
