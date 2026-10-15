@@ -83,7 +83,7 @@ export function AIQuestionStudio({ onAnswer }: {
   return (
     <>
       <header className="page-heading">
-        <span className="eyebrow">TREINO ADAPTATIVO · GEMINI</span>
+        <span className="eyebrow">TREINO ADAPTATIVO</span>
         <h1>Questões inéditas por tópico</h1>
         <p>Gere um pequeno bloco de questões alinhadas ao edital. As respostas ficam no seu histórico e os erros entram no Caderno de Erros.</p>
       </header>
