@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - feat/preparatorio-queimados
   workflow_dispatch:
 
 permissions:
