@@ -49,7 +49,7 @@ const schema = Schema.object({
   required: ['questions']
 });
 
-function getModel(systemInstruction?: string) {
+function getModel(options: { systemInstruction?: string; structuredOutput?: boolean } = {}) {
   if (!firebaseAiConfigured || !firebaseApp) {
     throw new Error('A IA ainda não está habilitada. Falta concluir a configuração gratuita do Firebase AI Logic e do App Check.');
   }
@@ -57,8 +57,10 @@ function getModel(systemInstruction?: string) {
   return getGenerativeModel(ai, {
     // Current Flash supports structured output; the project stays on the no-billing tier.
     model: 'gemini-3.8-flash',
-    systemInstruction,
-    generationConfig: { maxOutputTokens: 5000, responseMimeType: 'application/json', responseSchema: schema }
+    systemInstruction: options.systemInstruction,
+    generationConfig: options.structuredOutput
+      ? { maxOutputTokens: 5000, responseMimeType: 'application/json', responseSchema: schema }
+      : { maxOutputTokens: 5000 }
   });
 }
 
@@ -82,7 +84,7 @@ function sourceQuestion(question: GeneratedQuestion): Question {
     id: `ai-${crypto.randomUUID()}`,
     provenance: {
       kind: 'original',
-      label: 'Questão inédita gerada por IA — confira com o material oficial',
+      label: 'Questão nova para treino — confira com o material oficial',
       sourceId: 'gemini-ai-training'
     }
   };
@@ -112,7 +114,7 @@ Matéria: ${topic.discipline}
 Dificuldade solicitada: ${input.difficulty}. Fácil = aplicação direta; média = interpretação/aplicação com um passo de raciocínio; difícil = distinção conceitual ou caso com mais de uma etapa, sem ambiguidade.
 Exemplos de estilo, para referência e não para copiar: ${JSON.stringify(examples)}
 Produza alternativas plausíveis e apenas uma correta. Explique a correta e o defeito específico de cada distrator no campo note. Responda apenas o JSON conforme o esquema.`;
-  const result = await getModel().generateContent(prompt);
+  const result = await getModel({ structuredOutput: true }).generateContent(prompt);
   const generated = responseJson(result.response.text(), generationSchema).questions;
   if (generated.some((item) => item.topicId !== topic.id || item.discipline !== topic.discipline)) {
     throw new Error('A IA trouxe uma questão fora do tópico selecionado. Gere novamente.');
@@ -127,7 +129,7 @@ export async function explainMistake(input: {
 }): Promise<string> {
   const { question } = input;
   const topic = getTopic(question.topicId);
-  const model = getModel('Você é um tutor de concursos cuidadoso. Ensine em português brasileiro claro e respeitoso. Use apenas o enunciado, alternativas, gabarito e comentário fornecidos. Não invente lei, artigo ou fonte. Se houver insuficiência ou possível inconsistência, diga isso com clareza. Não prometa aprovação.');
+  const model = getModel({ systemInstruction: 'Você é um tutor de concursos cuidadoso. Ensine em português brasileiro claro e respeitoso. Use apenas o enunciado, alternativas, gabarito e comentário fornecidos. Não invente lei, artigo ou fonte. Se houver insuficiência ou possível inconsistência, diga isso com clareza. Não prometa aprovação.' });
   const prompt = `Ajude a aprender com esta questão.
 Matéria: ${question.discipline}; tópico do edital: ${topic?.title ?? question.topicId}; resumo do tópico: ${topic?.summary ?? 'não fornecido'}.
 Enunciado: ${question.prompt}

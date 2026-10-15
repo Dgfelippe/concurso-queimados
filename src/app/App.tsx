@@ -961,7 +961,7 @@ function ExamSimulator({
                     <span style={{ color: '#68827b' }}>{labels[simQ.discipline]}</span>
                   </div>
                   <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 600, color: '#172c2b' }}>{simQ.prompt}</p>
-                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Inédita, criada pela IA para este simulado · dificuldade estimada' : simQ.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
+                  <p className="exam-provenance">{simQ.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : simQ.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{simQ.provenance.banca} · {simQ.provenance.contest} · {simQ.provenance.year} · <a href={simQ.provenance.url} target="_blank" rel="noreferrer">fonte ↗</a></>}</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#465f58', lineHeight: 1.5 }}>
                     <strong>Comentário:</strong> {simQ.explanation}
                   </p>
@@ -1046,7 +1046,7 @@ function ExamSimulator({
           </span>
         </div>
         <div className={`exam-provenance ${q.provenance.kind === 'original' ? 'is-original' : 'is-real'}`}>
-          {q.id.startsWith('ai-') ? 'Questão inédita gerada pela IA neste simulado · dificuldade estimada' : q.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
+          {q.id.startsWith('ai-') ? 'Questão nova de treino · dificuldade estimada' : q.provenance.kind === 'original' ? 'Questão de treino autoral do aplicativo' : <>{q.provenance.banca ?? 'Banca não identificada'} · {q.provenance.contest ?? 'Concurso não identificado'} · {q.provenance.year ?? 'ano não informado'} · <a href={q.provenance.url} target="_blank" rel="noreferrer">ver fonte ↗</a></>}
         </div>
 
         <h2>{q.prompt}</h2>

@@ -132,7 +132,7 @@ export function AIQuestionStudio({ onAnswer }: {
         {error && <p className="ai-error-message" role="alert">{error}</p>}
         {question && (
           <article className="ai-question-card">
-            <div className="ai-question-meta"><span>{topic?.title}</span><span>Dificuldade {mode === 'real' ? 'de estudo' : 'estimada'}: {({ easy: 'fácil', medium: 'média', hard: 'difícil' } as const)[question.difficulty]}</span><span>{mode === 'real' ? `${question.provenance.banca ?? 'Banca identificada'} · ${question.provenance.year ?? 'ano não informado'}` : 'Inédita · IA'}</span></div>
+            <div className="ai-question-meta"><span>{topic?.title}</span><span>Dificuldade estimada para estudo: {({ easy: 'fácil', medium: 'média', hard: 'difícil' } as const)[question.difficulty]}</span><span>{mode === 'real' ? `${question.provenance.banca ?? 'Banca identificada'} · ${question.provenance.year ?? 'ano não informado'}` : 'Questão nova de treino'}</span></div>
             {mode === 'real' && <p className="real-question-origin">{question.provenance.contest} · <a href={question.provenance.url} target="_blank" rel="noreferrer">conferir questão e arquivo de origem ↗</a></p>}
             <h2>{question.prompt}</h2>
             <div className="option-list">
@@ -141,9 +141,9 @@ export function AIQuestionStudio({ onAnswer }: {
             {!answered && selected && selected !== question.correctOption && <label className="review-reason-select">O que pesou nesta resposta?
               <select value={reason} onChange={(event) => setReason(event.target.value as ErrorReason)}>{Object.entries(reasonOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
             </label>}
-            {answered && <div className="ai-question-explanation" role="status"><strong>{selected === question.correctOption ? 'Resposta correta' : `O gabarito é ${question.correctOption}`}</strong><p>{question.explanation}</p><small>{question.studyTip}</small><p className="ai-source-warning">Questão inédita gerada por IA; dificuldade estimada. Se encontrou uma inconsistência, confira a fonte oficial antes de memorizar.</p></div>}
+            {answered && <div className="ai-question-explanation" role="status"><strong>{selected === question.correctOption ? 'Resposta correta' : `O gabarito é ${question.correctOption}`}</strong><p>{question.explanation}</p><small>{question.studyTip}</small><p className="ai-source-warning">Questão nova para treino; dificuldade estimada. Confira o material oficial antes de memorizar.</p></div>}
             {!answered ? <button className="button button-primary" type="button" disabled={!selected} onClick={confirm}>Conferir resposta</button> : index + 1 < set.length ? <button className="button button-primary" type="button" onClick={next}>Próxima questão</button> : <button className="button button-primary" type="button" onClick={() => { setSet([]); setIndex(0); setAnswered(false); setSelected(''); }}>Finalizar bloco</button>}
-            <small className="ai-question-count">Questão {index + 1} de {set.length} · dificuldade indicada pela IA, não pela banca.</small>
+            <small className="ai-question-count">Questão {index + 1} de {set.length} · dificuldade estimada para estudo.</small>
           </article>
         )}
       </section>

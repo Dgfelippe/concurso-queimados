@@ -199,7 +199,7 @@ export function ErrorTutor({ attempts, onAnswer }: ErrorTutorProps) {
                 <h3>Quer outra explicação?</h3>
                 <p>O tutor pode explicar de outro jeito e partir da alternativa que você marcou. Ele usa somente o enunciado e os dados desta questão.</p>
                 <button className="button button-secondary" type="button" onClick={requestAiLesson} disabled={aiBusy}>
-                  {aiBusy ? 'Preparando a explicação…' : aiExplanation ? 'Gerar outra explicação' : 'Pedir explicação ao tutor IA'}
+                  {aiBusy ? 'Preparando a explicação…' : aiExplanation ? 'Pedir outra explicação' : 'Pedir explicação ao tutor'}
                 </button>
                 <small>Ao clicar, o conteúdo desta questão e a sua resposta são enviados ao Google Gemini. Seu nome e e-mail não são enviados. No nível gratuito, o Google informa que pode usar o conteúdo das solicitações para melhorar os produtos.</small>
                 {aiError && <p className="ai-error-message" role="alert">{aiError}</p>}
